@@ -14,20 +14,21 @@ public struct ComposerView: View {
             VisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
                 .ignoresSafeArea()
 
-            VStack(spacing: 8) {
+            VStack(spacing: 6) {
                 header
                 if let providerSetupMessage = appState.providerSetupMessage {
                     ProviderSetupBanner(appState: appState, message: providerSetupMessage)
                 }
+                TransformControlsView(appState: appState, focusedField: $focusedField)
                 AnchorBarView(appState: appState)
-                HStack(alignment: .top, spacing: 10) {
-                    ComposerInputPanel(appState: appState, focusedField: $focusedField)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    PreviewPanel(appState: appState)
-                        .frame(minWidth: 280, idealWidth: 300, maxWidth: 320, maxHeight: .infinity)
-                }
+                PreviewPanel(appState: appState)
+                    .frame(minHeight: 82, idealHeight: 96, maxHeight: 116)
+                ComposerInputPanel(appState: appState, focusedField: $focusedField)
+                    .frame(maxHeight: .infinity)
             }
-            .padding(12)
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+            .padding(.bottom, 10)
         }
         .onReceive(NotificationCenter.default.publisher(for: .inputoFocusComposer)) { _ in
             focusedField = .input
@@ -35,12 +36,9 @@ public struct ComposerView: View {
     }
 
     private var header: some View {
-        HStack {
+        HStack(spacing: 8) {
             Label("Inputo", systemImage: "sparkles")
-                .font(.headline)
-            Text("AI input source")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.subheadline.weight(.semibold))
             Spacer()
             Button {
                 appState.openSettings()
@@ -48,6 +46,7 @@ public struct ComposerView: View {
                 Image(systemName: "gearshape")
             }
             .buttonStyle(.borderless)
+            .controlSize(.small)
             .help("Settings")
         }
     }
@@ -81,18 +80,44 @@ private struct ProviderSetupBanner: View {
     }
 }
 
+private struct TransformControlsView: View {
+    @ObservedObject var appState: AppState
+    var focusedField: FocusState<ComposerFocusField?>.Binding
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Picker("Preset", selection: $appState.selectedRecipeID) {
+                ForEach(appState.recipes) { recipe in
+                    Text(recipe.name).tag(recipe.id)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: 138)
+            .help("Preset")
+
+            TextField("Instruction", text: $appState.instruction)
+                .textFieldStyle(.roundedBorder)
+                .focused(focusedField, equals: .instruction)
+        }
+        .controlSize(.small)
+    }
+}
+
 private struct AnchorBarView: View {
     @ObservedObject var appState: AppState
 
     var body: some View {
-        HStack(spacing: 8) {
-            Text("Jump target")
+        HStack(spacing: 6) {
+            Label("Jump", systemImage: "arrowshape.turn.up.forward")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
+                .labelStyle(.titleAndIcon)
             if appState.anchors.isEmpty {
                 Text("No anchors")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -116,10 +141,13 @@ private struct AnchorBarView: View {
                             }
                             .buttonStyle(.plain)
                             .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+                            .fixedSize(horizontal: true, vertical: false)
                             .help("Switch to \(anchor.appName)")
                         }
                     }
                 }
+                .frame(height: 28)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             Button {
@@ -128,6 +156,7 @@ private struct AnchorBarView: View {
                 Image(systemName: "arrow.clockwise")
             }
             .buttonStyle(.borderless)
+            .controlSize(.small)
             .help("Refresh app anchors")
         }
     }
@@ -137,16 +166,17 @@ private struct PreviewPanel: View {
     @ObservedObject var appState: AppState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Label("Preview", systemImage: "doc.text.magnifyingglass")
-                    .font(.subheadline.weight(.semibold))
+                    .font(.caption.weight(.semibold))
                 Spacer()
                 Button {
                     appState.copyOutput()
                 } label: {
                     Label("Copy", systemImage: "doc.on.doc")
                 }
+                .controlSize(.small)
                 .disabled(appState.outputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
 
@@ -171,7 +201,7 @@ private struct PreviewPanel: View {
                             .font(.body)
                             .textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(14)
+                            .padding(10)
                     }
                 }
             }
@@ -181,13 +211,15 @@ private struct PreviewPanel: View {
                 Label(error, systemImage: "exclamationmark.triangle")
                     .font(.caption)
                     .foregroundStyle(.orange)
+                    .lineLimit(1)
             } else if let status = appState.statusMessage {
                 Label(status, systemImage: "checkmark.circle")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
         }
-        .padding(10)
+        .padding(8)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
     }
 }
@@ -197,48 +229,24 @@ private struct ComposerInputPanel: View {
     var focusedField: FocusState<ComposerFocusField?>.Binding
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(appState.recipes) { recipe in
-                        Button {
-                            appState.selectedRecipeID = recipe.id
-                        } label: {
-                            Text(recipe.name)
-                                .font(.caption.weight(.medium))
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 5)
-                        }
-                        .buttonStyle(.plain)
-                        .background(
-                            appState.selectedRecipeID == recipe.id ? Color.accentColor.opacity(0.22) : Color(nsColor: .quaternaryLabelColor).opacity(0.18),
-                            in: RoundedRectangle(cornerRadius: 8)
-                        )
-                    }
-                }
-            }
-
-            TextField("Optional instruction, e.g. make it warmer, translate to Japanese", text: $appState.instruction)
-                .textFieldStyle(.roundedBorder)
-                .focused(focusedField, equals: .instruction)
-
+        VStack(alignment: .leading, spacing: 6) {
             ZStack(alignment: .topLeading) {
                 TextEditor(text: $appState.inputText)
                     .font(.body)
                     .scrollContentBackground(.hidden)
                     .focused(focusedField, equals: .input)
-                    .padding(8)
+                    .padding(6)
                     .background(Color(nsColor: .textBackgroundColor).opacity(0.72), in: RoundedRectangle(cornerRadius: 8))
 
                 if appState.inputText.isEmpty {
                     Text("Paste or type the text you want Inputo to transform...")
                         .foregroundStyle(.secondary)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 16)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 12)
                         .allowsHitTesting(false)
                 }
             }
-            .frame(minHeight: 72, maxHeight: .infinity)
+            .frame(minHeight: 78, maxHeight: .infinity)
 
             HStack {
                 Button {
@@ -246,6 +254,7 @@ private struct ComposerInputPanel: View {
                     Image(systemName: "photo")
                 }
                 .disabled(true)
+                .controlSize(.small)
                 .help("Image input is reserved for a later version")
 
                 Button {
@@ -253,6 +262,7 @@ private struct ComposerInputPanel: View {
                     Image(systemName: "paperclip")
                 }
                 .disabled(true)
+                .controlSize(.small)
                 .help("Attachments are reserved for a later version")
 
                 Spacer()
@@ -262,6 +272,7 @@ private struct ComposerInputPanel: View {
                 } label: {
                     Label("Clear", systemImage: "xmark.circle")
                 }
+                .controlSize(.small)
 
                 Button {
                     appState.generate()
@@ -273,10 +284,11 @@ private struct ComposerInputPanel: View {
                     }
                 }
                 .keyboardShortcut(.return, modifiers: [.command])
+                .controlSize(.small)
                 .disabled(appState.isGenerating || appState.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
-        .padding(10)
+        .padding(8)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
     }
 }
