@@ -221,7 +221,7 @@ func saveSettingsPersistsSettingsAPIKeyAndFallsBackFromRemovedPreset() {
 
 @MainActor
 @Test
-func testProviderTranslationUsesSavedProviderAndDoesNotCopy() async throws {
+func testProviderConnectionUsesSavedProviderAndDoesNotCopy() async throws {
     let providerConfig = AIProviderConfig(
         baseURL: "https://provider.example",
         model: "inputo-test",
@@ -236,20 +236,20 @@ func testProviderTranslationUsesSavedProviderAndDoesNotCopy() async throws {
     let harness = makeHarness(
         settings: settings,
         apiKey: "test-key",
-        providerResult: .success("Hello, world.")
+        providerResult: .success("ok")
     )
 
-    await harness.state.testProviderTranslation().value
+    await harness.state.testProviderConnection().value
 
     let request = try #require(harness.provider.requests.first)
-    #expect(request.text == "你好，世界。")
-    #expect(request.instruction == "Translate to natural English.")
-    #expect(request.recipe.id == "translate-en")
+    #expect(request.text == "ping")
+    #expect(request.instruction == "Reply with exactly: ok")
+    #expect(request.recipe.id == "provider-connection-test")
     #expect(request.config == providerConfig)
     #expect(request.apiKey == "test-key")
-    #expect(harness.state.providerTestOutput == "Hello, world.")
+    #expect(harness.state.providerTestMessage == "Connection test succeeded.")
     #expect(harness.state.providerTestError == nil)
-    #expect(harness.state.statusMessage == "Provider test succeeded.")
+    #expect(harness.state.statusMessage == "Connection test succeeded.")
     #expect(harness.clipboard.copiedTexts.isEmpty)
 }
 

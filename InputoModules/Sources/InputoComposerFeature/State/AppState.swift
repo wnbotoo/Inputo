@@ -16,7 +16,7 @@ public final class AppState: ObservableObject {
     @Published public var anchors: [AppAnchor] = []
     @Published public var isGenerating = false
     @Published public var isTestingProvider = false
-    @Published public var providerTestOutput: String?
+    @Published public var providerTestMessage: String?
     @Published public var providerTestError: String?
     @Published public var statusMessage: String?
     @Published public var errorMessage: String?
@@ -150,7 +150,7 @@ public final class AppState: ObservableObject {
 
     @discardableResult
     public func saveSettings(_ newSettings: AppSettings, apiKey: String?) -> Bool {
-        providerTestOutput = nil
+        providerTestMessage = nil
         providerTestError = nil
         settings = newSettings
         services.settings.saveSettings(newSettings)
@@ -174,11 +174,11 @@ public final class AppState: ObservableObject {
     }
 
     @discardableResult
-    public func testProviderTranslation() -> Task<Void, Never> {
+    public func testProviderConnection() -> Task<Void, Never> {
         providerTestTask?.cancel()
         let testID = UUID()
         activeProviderTestID = testID
-        providerTestOutput = nil
+        providerTestMessage = nil
         providerTestError = nil
         isTestingProvider = true
 
@@ -192,17 +192,16 @@ public final class AppState: ObservableObject {
                     throw AIProviderError.missingAPIKey
                 }
 
-                let recipe = TransformRecipe.builtIns.first(where: { $0.id == "translate-en" }) ?? selectedRecipe
-                let result = try await services.textTransformer.transformText(
-                    text: "你好，世界。",
-                    instruction: "Translate to natural English.",
-                    recipe: recipe,
+                _ = try await services.textTransformer.transformText(
+                    text: "ping",
+                    instruction: "Reply with exactly: ok",
+                    recipe: Self.providerConnectionTestRecipe,
                     config: settings.provider,
                     apiKey: apiKey
                 )
                 guard !Task.isCancelled else { return }
-                providerTestOutput = result
-                statusMessage = "Provider test succeeded."
+                providerTestMessage = "Connection test succeeded."
+                statusMessage = providerTestMessage
                 errorMessage = nil
             } catch is CancellationError {
             } catch {
@@ -247,4 +246,12 @@ public final class AppState: ObservableObject {
     private static func hasUsableAPIKey(_ apiKey: String) -> Bool {
         !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
+
+    private static let providerConnectionTestRecipe = TransformRecipe(
+        id: "provider-connection-test",
+        name: "Connection Test",
+        systemPrompt: "You are checking whether the provider can process a minimal chat completion request.",
+        outputHint: "Return exactly: ok",
+        isBuiltIn: true
+    )
 }

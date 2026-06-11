@@ -57,13 +57,13 @@ public struct SettingsView: View {
 
                 Button {
                     if appState.saveSettings(settings, apiKey: apiKey) {
-                        appState.testProviderTranslation()
+                        appState.testProviderConnection()
                     }
                 } label: {
                     if appState.isTestingProvider {
                         Label("Testing", systemImage: "hourglass")
                     } else {
-                        Label("Save & Test Translation", systemImage: "checkmark.bubble")
+                        Label("Save & Test Connection", systemImage: "checkmark.bubble")
                     }
                 }
                 .disabled(appState.isTestingProvider)
@@ -100,15 +100,10 @@ public struct SettingsView: View {
                 .foregroundStyle(.orange)
         }
 
-        if let output = appState.providerTestOutput {
-            VStack(alignment: .leading, spacing: 4) {
-                Label("Translation test succeeded.", systemImage: "checkmark.circle")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(output)
-                    .font(.caption)
-                    .textSelection(.enabled)
-            }
+        if let message = appState.providerTestMessage {
+            Label(message, systemImage: "checkmark.circle")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         } else if let error = appState.providerTestError {
             Label(error, systemImage: "exclamationmark.triangle")
                 .font(.caption)
