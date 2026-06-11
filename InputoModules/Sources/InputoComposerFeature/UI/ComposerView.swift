@@ -10,7 +10,7 @@ public struct ComposerView: View {
     }
 
     public var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             VisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
                 .ignoresSafeArea()
 
@@ -19,16 +19,18 @@ public struct ComposerView: View {
                 if let providerSetupMessage = appState.providerSetupMessage {
                     ProviderSetupBanner(appState: appState, message: providerSetupMessage)
                 }
-                TransformControlsView(appState: appState, focusedField: $focusedField)
                 AnchorBarView(appState: appState)
                 PreviewPanel(appState: appState)
                     .frame(minHeight: 82, idealHeight: 96, maxHeight: 116)
+                TransformControlsView(appState: appState, focusedField: $focusedField)
                 ComposerInputPanel(appState: appState, focusedField: $focusedField)
                     .frame(maxHeight: .infinity)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .padding(.horizontal, 12)
             .padding(.top, 8)
             .padding(.bottom, 10)
+            .ignoresSafeArea(.container, edges: .top)
         }
         .onReceive(NotificationCenter.default.publisher(for: .inputoFocusComposer)) { _ in
             focusedField = .input
@@ -93,13 +95,13 @@ private struct TransformControlsView: View {
             }
             .labelsHidden()
             .pickerStyle(.menu)
-            .frame(width: 138)
             .help("Preset")
 
             TextField("Instruction", text: $appState.instruction)
                 .textFieldStyle(.roundedBorder)
                 .focused(focusedField, equals: .instruction)
         }
+        .padding(.horizontal, 8)
         .controlSize(.small)
     }
 }

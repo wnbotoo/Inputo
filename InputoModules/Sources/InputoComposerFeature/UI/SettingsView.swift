@@ -38,15 +38,26 @@ public struct SettingsView: View {
     }
 
     private var providerTab: some View {
-        Form {
-            TextField("Base URL", text: $settings.provider.baseURL)
-            TextField("Model", text: $settings.provider.model)
-            SecureField("API Key", text: $apiKey)
-            HStack {
-                Text("Timeout")
-                Slider(value: $settings.provider.timeoutSeconds, in: 10...120, step: 5)
-                Text("\(Int(settings.provider.timeoutSeconds))s")
-                    .monospacedDigit()
+        VStack(alignment: .leading, spacing: 12) {
+            providerFieldRow("Base URL") {
+                TextField("https://api.openai.com/v1", text: $settings.provider.baseURL)
+                    .textFieldStyle(.roundedBorder)
+            }
+            providerFieldRow("Model") {
+                TextField("gpt-4.1-mini", text: $settings.provider.model)
+                    .textFieldStyle(.roundedBorder)
+            }
+            providerFieldRow("API Key") {
+                SecureField("sk-...", text: $apiKey)
+                    .textFieldStyle(.roundedBorder)
+            }
+            providerFieldRow("Timeout") {
+                HStack(spacing: 10) {
+                    Slider(value: $settings.provider.timeoutSeconds, in: 10...120, step: 5)
+                    Text("\(Int(settings.provider.timeoutSeconds))s")
+                        .monospacedDigit()
+                        .frame(width: 42, alignment: .trailing)
+                }
             }
 
             providerStatusRows
@@ -70,6 +81,18 @@ public struct SettingsView: View {
                 }
                 .disabled(appState.isTestingProvider)
             }
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private func providerFieldRow<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(title)
+                .foregroundStyle(.secondary)
+                .frame(width: 76, alignment: .leading)
+            content()
         }
     }
 
