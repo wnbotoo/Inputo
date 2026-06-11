@@ -53,6 +53,20 @@ func providerConfigValidationBuildsChatCompletionsEndpoint() throws {
 }
 
 @Test
+func providerConfigValidationAcceptsFullChatCompletionsEndpoint() throws {
+    let config = AIProviderConfig(
+        baseURL: "https://provider.example/api/v1/chat/completions",
+        model: "inputo-test",
+        timeoutSeconds: 30,
+        headers: [:]
+    )
+
+    let validated = try config.validated()
+
+    #expect(validated.chatCompletionsURL.absoluteString == "https://provider.example/api/v1/chat/completions")
+}
+
+@Test
 func providerConfigValidationRejectsInvalidValues() {
     #expect(throws: AIProviderError.invalidBaseURL) {
         try AIProviderConfig(baseURL: "", model: "model", timeoutSeconds: 30, headers: [:]).validated()

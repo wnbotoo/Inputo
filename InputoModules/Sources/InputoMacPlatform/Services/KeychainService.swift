@@ -30,7 +30,7 @@ public struct KeychainService {
         return value
     }
 
-    public func saveAPIKey(_ value: String) {
+    public func saveAPIKey(_ value: String) throws {
         let data = Data(value.utf8)
         let baseQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -39,7 +39,10 @@ public struct KeychainService {
         ]
 
         if value.isEmpty {
-            SecItemDelete(baseQuery as CFDictionary)
+            let status = SecItemDelete(baseQuery as CFDictionary)
+            if status != errSecSuccess && status != errSecItemNotFound {
+                throw KeychainError.unhandled(status)
+            }
             return
         }
 
@@ -50,10 +53,16 @@ public struct KeychainService {
         if updateStatus == errSecSuccess {
             return
         }
+        if updateStatus != errSecItemNotFound {
+            throw KeychainError.unhandled(updateStatus)
+        }
 
         var addQuery = baseQuery
         addQuery[kSecValueData as String] = data
-        SecItemAdd(addQuery as CFDictionary, nil)
+        let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+        guard addStatus == errSecSuccess else {
+            throw KeychainError.unhandled(addStatus)
+        }
     }
 }
 

@@ -49,10 +49,25 @@ public struct SettingsView: View {
 
             providerStatusRows
 
-            Button("Save Provider Settings") {
-                appState.saveSettings(settings, apiKey: apiKey)
+            HStack {
+                Button("Save Provider Settings") {
+                    appState.saveSettings(settings, apiKey: apiKey)
+                }
+                .buttonStyle(.borderedProminent)
+
+                Button {
+                    if appState.saveSettings(settings, apiKey: apiKey) {
+                        appState.testProviderTranslation()
+                    }
+                } label: {
+                    if appState.isTestingProvider {
+                        Label("Testing", systemImage: "hourglass")
+                    } else {
+                        Label("Save & Test Translation", systemImage: "checkmark.bubble")
+                    }
+                }
+                .disabled(appState.isTestingProvider)
             }
-            .buttonStyle(.borderedProminent)
         }
     }
 
@@ -70,6 +85,21 @@ public struct SettingsView: View {
 
         if apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             Label("API key is empty.", systemImage: "key")
+                .font(.caption)
+                .foregroundStyle(.orange)
+        }
+
+        if let output = appState.providerTestOutput {
+            VStack(alignment: .leading, spacing: 4) {
+                Label("Translation test succeeded.", systemImage: "checkmark.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(output)
+                    .font(.caption)
+                    .textSelection(.enabled)
+            }
+        } else if let error = appState.providerTestError {
+            Label(error, systemImage: "exclamationmark.triangle")
                 .font(.caption)
                 .foregroundStyle(.orange)
         }

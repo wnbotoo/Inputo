@@ -220,6 +220,40 @@ func saveSettingsPersistsSettingsAPIKeyAndFallsBackFromRemovedPreset() {
 }
 
 @MainActor
+@Test
+func testProviderTranslationUsesSavedProviderAndDoesNotCopy() async throws {
+    let providerConfig = AIProviderConfig(
+        baseURL: "https://provider.example",
+        model: "inputo-test",
+        timeoutSeconds: 20,
+        headers: [:]
+    )
+    let settings = AppSettings(
+        provider: providerConfig,
+        hotKey: nil,
+        customPresets: []
+    )
+    let harness = makeHarness(
+        settings: settings,
+        apiKey: "test-key",
+        providerResult: .success("Hello, world.")
+    )
+
+    await harness.state.testProviderTranslation().value
+
+    let request = try #require(harness.provider.requests.first)
+    #expect(request.text == "你好，世界。")
+    #expect(request.instruction == "Translate to natural English.")
+    #expect(request.recipe.id == "translate-en")
+    #expect(request.config == providerConfig)
+    #expect(request.apiKey == "test-key")
+    #expect(harness.state.providerTestOutput == "Hello, world.")
+    #expect(harness.state.providerTestError == nil)
+    #expect(harness.state.statusMessage == "Provider test succeeded.")
+    #expect(harness.clipboard.copiedTexts.isEmpty)
+}
+
+@MainActor
 private func makeHarness(
     settings: AppSettings = .default,
     apiKey: String = "test-key",
@@ -282,6 +316,7 @@ private final class FakeSettingsService: AppSettingsServicing {
 private final class FakeAPIKeyService: APIKeyServicing {
     var apiKey: String
     var readError: Error?
+    var saveError: Error?
     private(set) var savedAPIKeys: [String] = []
 
     init(apiKey: String) {
@@ -295,7 +330,10 @@ private final class FakeAPIKeyService: APIKeyServicing {
         return apiKey
     }
 
-    func saveAPIKey(_ apiKey: String) {
+    func saveAPIKey(_ apiKey: String) throws {
+        if let saveError {
+            throw saveError
+        }
         savedAPIKeys.append(apiKey)
         self.apiKey = apiKey
     }

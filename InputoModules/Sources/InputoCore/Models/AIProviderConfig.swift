@@ -92,6 +92,10 @@ extension AIProviderConfig {
 
     private func chatCompletionsURL(for baseURL: URL) -> URL {
         let pathComponents = baseURL.pathComponents.filter { $0 != "/" }
+        if pathComponents.suffix(3) == ["v1", "chat", "completions"] {
+            return baseURL
+        }
+
         if pathComponents.last == "v1" {
             return baseURL
                 .appendingPathComponent("chat")

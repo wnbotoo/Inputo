@@ -11,7 +11,7 @@ public protocol AppSettingsServicing {
 @MainActor
 public protocol APIKeyServicing {
     func readAPIKey() throws -> String
-    func saveAPIKey(_ apiKey: String)
+    func saveAPIKey(_ apiKey: String) throws
 }
 
 @MainActor
@@ -96,8 +96,8 @@ private struct LiveAPIKeyService: APIKeyServicing {
         try keychain.readAPIKey()
     }
 
-    func saveAPIKey(_ apiKey: String) {
-        keychain.saveAPIKey(apiKey)
+    func saveAPIKey(_ apiKey: String) throws {
+        try keychain.saveAPIKey(apiKey)
     }
 }
 

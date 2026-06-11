@@ -15,6 +15,9 @@ public final class AppState: ObservableObject {
     @Published public var outputText: String = ""
     @Published public var anchors: [AppAnchor] = []
     @Published public var isGenerating = false
+    @Published public var isTestingProvider = false
+    @Published public var providerTestOutput: String?
+    @Published public var providerTestError: String?
     @Published public var statusMessage: String?
     @Published public var errorMessage: String?
 
@@ -25,6 +28,8 @@ public final class AppState: ObservableObject {
     private let services: AppStateServices
     private var generationTask: Task<Void, Never>?
     private var activeGenerationID: UUID?
+    private var providerTestTask: Task<Void, Never>?
+    private var activeProviderTestID: UUID?
 
     public var recipes: [TransformRecipe] {
         TransformRecipe.builtIns + settings.customPresets
@@ -143,17 +148,73 @@ public final class AppState: ObservableObject {
         onRequestSettings?()
     }
 
-    public func saveSettings(_ newSettings: AppSettings, apiKey: String?) {
+    @discardableResult
+    public func saveSettings(_ newSettings: AppSettings, apiKey: String?) -> Bool {
+        providerTestOutput = nil
+        providerTestError = nil
         settings = newSettings
         services.settings.saveSettings(newSettings)
         if let apiKey {
-            services.apiKeys.saveAPIKey(apiKey)
-            hasAPIKey = Self.hasUsableAPIKey(apiKey)
+            do {
+                try services.apiKeys.saveAPIKey(apiKey)
+                hasAPIKey = Self.hasUsableAPIKey(apiKey)
+            } catch {
+                statusMessage = nil
+                errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                hasAPIKey = Self.hasUsableAPIKey((try? services.apiKeys.readAPIKey()) ?? "")
+                onSettingsChanged?(newSettings)
+                return false
+            }
         }
         if !recipes.contains(where: { $0.id == selectedRecipeID }) {
             selectedRecipeID = TransformRecipe.builtIns[0].id
         }
         onSettingsChanged?(newSettings)
+        return true
+    }
+
+    @discardableResult
+    public func testProviderTranslation() -> Task<Void, Never> {
+        providerTestTask?.cancel()
+        let testID = UUID()
+        activeProviderTestID = testID
+        providerTestOutput = nil
+        providerTestError = nil
+        isTestingProvider = true
+
+        let task = Task { [weak self] in
+            guard let self else { return }
+            do {
+                _ = try settings.provider.validated()
+                let apiKey = try services.apiKeys.readAPIKey()
+                hasAPIKey = Self.hasUsableAPIKey(apiKey)
+                guard hasAPIKey else {
+                    throw AIProviderError.missingAPIKey
+                }
+
+                let recipe = TransformRecipe.builtIns.first(where: { $0.id == "translate-en" }) ?? selectedRecipe
+                let result = try await services.textTransformer.transformText(
+                    text: "你好，世界。",
+                    instruction: "Translate to natural English.",
+                    recipe: recipe,
+                    config: settings.provider,
+                    apiKey: apiKey
+                )
+                guard !Task.isCancelled else { return }
+                providerTestOutput = result
+                statusMessage = "Provider test succeeded."
+                errorMessage = nil
+            } catch is CancellationError {
+            } catch {
+                guard !Task.isCancelled else { return }
+                providerTestError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                statusMessage = nil
+                errorMessage = providerTestError
+            }
+            finishProviderTest(id: testID)
+        }
+        providerTestTask = task
+        return task
     }
 
     public func currentAPIKeyForEditing() -> String {
@@ -174,6 +235,13 @@ public final class AppState: ObservableObject {
         generationTask = nil
         activeGenerationID = nil
         isGenerating = false
+    }
+
+    private func finishProviderTest(id: UUID) {
+        guard activeProviderTestID == id else { return }
+        providerTestTask = nil
+        activeProviderTestID = nil
+        isTestingProvider = false
     }
 
     private static func hasUsableAPIKey(_ apiKey: String) -> Bool {
