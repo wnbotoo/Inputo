@@ -4,6 +4,8 @@ import InputoMacPlatform
 import SwiftUI
 
 public struct SettingsView: View {
+    public static let preferredSize = CGSize(width: 560, height: 620)
+
     @ObservedObject public var appState: AppState
 
     @State private var settings: AppSettings

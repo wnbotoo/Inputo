@@ -8,7 +8,7 @@ struct InputoApp: App {
     var body: some Scene {
         Settings {
             SettingsView(appState: AppState.shared)
-                .frame(width: 560, height: 620)
+                .frame(width: SettingsView.preferredSize.width, height: SettingsView.preferredSize.height)
         }
     }
 }
