@@ -18,6 +18,27 @@ The macOS and future Windows apps share contracts, not runtime code. The shared 
 - macOS: SwiftUI for UI, AppKit for menu bar, floating panel, clipboard, app activation, and visible-app discovery.
 - Windows later: WinUI 3 for UI, Win32 interop for window enumeration and activation, Credential Manager for API keys.
 
+## Hybrid Web UI Exploration
+
+The current v1 direction remains native until the first end-to-end text transform loop is reliable. A future hybrid UI can be explored after that without changing the platform and privacy boundaries.
+
+If web UI is introduced, the intended shape is a native shell with web-rendered product surfaces, not a full rewrite:
+
+- Native app shell still owns app lifecycle, menu bar, global hotkey, floating/settings window hosting, app anchors, clipboard writes, Keychain, sandbox entitlements, and OS permissions.
+- `InputoCore` remains Foundation-only and continues to own provider validation, request/response models, prompt assembly, and cross-platform DTOs.
+- `InputoMacPlatform` remains the only macOS service adapter layer.
+- Web UI, likely hosted in `WKWebView`, may render composer/settings screens and communicate with Swift through a narrow message bridge.
+- The bridge should expose explicit feature commands such as generate, copy, reset, refresh anchors, activate anchor, load settings, and save settings. It should not expose arbitrary tool execution or unrestricted native APIs.
+- v1 privacy constraints still apply: no automatic paste, no input/generated history, no screenshots, no window title capture, and no MCP/tool execution.
+
+Open questions for the hybrid design discussion:
+
+- Whether web UI should cover only the composer first, or composer and settings together.
+- Whether the web bundle should be built from a local frontend workspace or checked in as static assets.
+- How to type the Swift-to-web bridge so it stays testable and compatible with future Windows UI work.
+- How to handle keyboard focus, IME behavior, accessibility, and latency inside a Spotlight-like floating panel.
+- Whether provider streaming changes the bridge contract.
+
 ## Development Standards
 
 Inputo uses Swift Package Manager as the module and dependency-management baseline. Do not introduce CocoaPods, Carthage, XcodeGen, or other project generators unless the project owner explicitly changes this policy.

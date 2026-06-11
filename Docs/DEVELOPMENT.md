@@ -8,6 +8,17 @@ Inputo is a menu-bar resident, Spotlight-like AI input source for macOS. The use
 
 The app intentionally avoids automatic paste, input history, generated history, screenshots, window titles, MCP execution, and external tools in v1.
 
+## Current Implementation Status
+
+- The app target is thin and hosts the menu bar app, floating composer panel, and settings window.
+- `AppState` uses small service protocols with live and fake services, so feature flows can be tested without real OS services.
+- Unit coverage exists for generate, copy, reset, anchor activation, provider validation, provider request shape, error redaction, and the neutral provider connection test.
+- Provider configuration supports OpenAI-compatible chat completions endpoints, including base origins, `/v1`, and full `/v1/chat/completions` URLs.
+- The app sandbox includes the network client entitlement required for provider requests.
+- Settings has a neutral "Save & Test Connection" action that does not use translation as the smoke test.
+- The composer is a compact single-column native SwiftUI panel: target app anchors, preview, preset/instruction controls, input, and actions.
+- Settings window sizing has been stabilized with explicit SwiftUI/AppKit hosting dimensions.
+
 ## Development Principles
 
 - Keep `Inputo` as a thin Xcode app target for lifecycle, menu-bar integration, and AppKit window hosting.
@@ -20,37 +31,28 @@ The app intentionally avoids automatic paste, input history, generated history, 
 
 ## Immediate Priorities
 
-1. Stabilize the app shell.
-   - Verify status-bar opening when Xcode, Safari, Notes, Chrome, Finder, and full-screen apps are frontmost.
-   - Verify custom hotkey show/hide behavior across Spaces and multiple displays.
-   - Add Escape-to-hide behavior for the floating composer.
+1. Prove the native v0.1 loop.
+   - Run a real provider transform such as translation or polish from the floating composer.
+   - Confirm clipboard is unchanged before Copy and correct after Copy.
+   - Confirm app-anchor activation returns to the selected target app and clears transient state.
+   - Verify status-bar opening and hotkey opening across common apps, Spaces, and multiple displays.
+
+2. Tighten composer ergonomics.
+   - Keep the panel compact, single-column, and no taller than roughly one third of the visible screen where possible.
+   - Improve keyboard navigation between anchors, preview, preset, instruction, input, generate, clear, and copy.
    - Decide whether Copy should keep the composer open, hide it, or offer both actions.
-   - Make anchor activation failures visible but calm.
+   - Continue visual QA for top/bottom margins and titlebar safe-area behavior.
 
-2. Make state and services testable.
-   - Introduce small service protocols consumed by `AppState`.
-   - Inject default live services from the app composition root.
-   - Add fakes for provider, clipboard, settings, keychain, and anchors.
-   - Add tests for generate/copy/reset/anchor flows without touching real OS services.
-
-3. Tighten provider behavior.
-   - Validate `baseURL`, `model`, timeout, and headers before generation.
-   - Redact API keys and sensitive headers from all errors and logs.
-   - Add request-shape tests for OpenAI-compatible `/v1/chat/completions`.
-   - Add cancellation support for in-flight generation.
-   - Consider streaming only after non-streaming behavior is reliable.
-
-4. Improve first-run and settings UX.
+3. Improve first-run and settings UX.
    - Guide the user to set provider, model, API key, and hotkey before first generation.
-   - Show provider validation errors inline.
-   - Add custom preset CRUD with stable IDs.
-   - Add permission/status indicators for shortcuts and app-anchor behavior.
+   - Keep provider validation and connection-test diagnostics clear without leaking secrets.
+   - Add more explicit permission/status indicators for shortcut and app-anchor behavior.
 
-5. Polish the composer.
-   - Make the bottom-center panel feel closer to Spotlight while keeping the two-panel workflow.
-   - Improve keyboard navigation between recipe, instruction, input, generate, copy, and anchors.
-   - Add empty, loading, success, error, and activation-failed states.
-   - Keep controls dense, calm, and task-focused.
+4. Discuss hybrid web UI after the native loop is proven.
+   - Keep the native shell and service boundaries intact.
+   - Evaluate whether a web-rendered composer/settings surface improves iteration, previewing, and open-source contribution.
+   - Design the Swift-to-web bridge before adding frontend tooling.
+   - Do not start a full web rewrite unless the architecture decision explicitly changes.
 
 ## Backlog
 
@@ -64,10 +66,13 @@ The app intentionally avoids automatic paste, input history, generated history, 
 - Add app icon and refined status-bar icon.
 - Add optional "copy and hide" command after the basic copy flow is proven.
 - Add optional "last target app" quick action once anchor tracking is stable.
+- Explore a `WKWebView` renderer for composer/settings after v0.1 is reliable.
+- Add bridge contract tests if a web UI is introduced.
 
 ## Deferred Until After MVP
 
 - Windows WinUI 3 implementation.
+- Hybrid web UI implementation.
 - MCP connector execution.
 - Tool execution.
 - Automatic paste.

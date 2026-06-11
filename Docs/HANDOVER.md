@@ -15,41 +15,52 @@ Inputo is a macOS-native MVP for a system-wide AI input source. It sits between 
 - v1 is text-only and does not execute MCP/tools.
 - v1 copies only on explicit user action and does not auto-paste.
 - v1 does not store user input history or generated history.
+- v1 does not read window titles, capture screenshots, or request screen recording for app anchors.
 - API keys use Keychain on macOS.
 - Cross-platform contracts live in `Contracts/inputo.v1.schema.json`.
+- The product should first prove a native v0.1 loop before any web UI implementation.
+- Hybrid web UI can be discussed next, but the intended direction is native shell plus optional web-rendered product surfaces, not a full rewrite.
 
 ## Project Layout
 
 - `Inputo.xcodeproj`: app target, signing/build settings, local package product links.
 - `Inputo/App`: app lifecycle, menu bar, floating panel, settings window hosting.
 - `InputoModules/Package.swift`: local SwiftPM package.
-- `InputoModules/Sources/InputoCore`: core DTOs, recipes, provider client.
+- `InputoModules/Sources/InputoCore`: Foundation-only core DTOs, recipes, provider client.
 - `InputoModules/Sources/InputoMacPlatform`: Keychain, clipboard, hotkey, settings, app anchors.
 - `InputoModules/Sources/InputoComposerFeature`: composer UI, settings UI, feature state.
 - `Contracts`: language-neutral shared schema.
 - `Docs/ARCHITECTURE.md`: architecture and boundaries.
 - `Docs/DEVELOPMENT.md`: roadmap, todo list, verification, manual QA.
-- `Docs/HANDOVER.md`: current project state and new-conversation prompt.
+- `Docs/HANDOVER_WEB_UI_DISCUSSION.md`: prompt for a new conversation about the hybrid web UI direction.
 
-## Recent Fixes
+## Recent Work
 
-- Renamed the local package from `AppPackages` to `InputoModules`.
-- Wired the Xcode app target to package products:
-  - `InputoCore`
-  - `InputoMacPlatform`
-  - `InputoComposerFeature`
-- Added a repository-level `.gitignore` for generated build and Xcode user files.
-- Removed tracked Xcode `xcuserdata` because it only contained local scheme ordering.
-- Fixed status-bar menu opening reliability by deferring menu item actions until after menu tracking and making the floating panel order to front more explicitly.
+- Refactored `AppState` behind small service protocols and added fake services for tests.
+- Added unit tests for generate, copy, reset, anchor activation, provider validation, provider request shape, error redaction, cancellation, and neutral provider connection testing.
+- Hardened provider setup:
+  - validates base URL, model, timeout, and headers;
+  - accepts base origins, `/v1`, and full `/v1/chat/completions` URLs;
+  - redacts sensitive provider errors;
+  - maps common network errors to more useful messages.
+- Added macOS app sandbox network client entitlement so provider calls can work from the app.
+- Replaced translation-based connection testing with a neutral "ping/ok" provider test.
+- Stabilized settings window sizing by using explicit `NSHostingController` sizing.
+- Tightened the composer UI into a compact single-column panel:
+  - top app header and horizontal app anchors;
+  - preview above input;
+  - preset and instruction controls between preview and input;
+  - explicit Copy button only for clipboard writes.
 
 ## Known State
 
 - `swift test --package-path InputoModules` passes.
 - `xcodebuild -project Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build` passes.
-- The app has a working scaffold for provider config, built-in recipes, custom presets storage, Keychain API key storage, clipboard copy, app anchors, global hotkey registration, and settings.
-- `AppState` currently constructs its own concrete services. The next useful refactor is dependency injection through small protocols so feature flows can be unit-tested.
-- The composer currently uses English UI strings. Localization has not started.
-- There is no committed Windows project yet.
+- A configured OpenAI-compatible provider can complete at least one real text transform in local use.
+- Settings includes provider config, API key editing, neutral connection test, hotkey recording, custom presets, and privacy status.
+- Composer UI is still native SwiftUI.
+- There is no committed Windows project and no web UI implementation yet.
+- Localization has not started; most UI strings are English.
 
 ## Important Constraints
 
@@ -60,27 +71,37 @@ Inputo is a macOS-native MVP for a system-wide AI input source. It sits between 
 - Do not request screen recording permission for v1 app anchors.
 - Do not read or display window titles for v1 app anchors.
 - Treat generated `.build`, `.swiftpm`, DerivedData, and `xcuserdata` as untracked local state.
+- Any future web UI should communicate with Swift through narrow, typed bridge commands instead of arbitrary native access.
 
 ## Suggested Next Slice
 
-Start with testability and shell reliability:
+Discuss and document the hybrid web UI direction before implementing it:
 
-1. Introduce service protocols for `AppState`.
-2. Inject live services from the app composition root.
-3. Add fake services for unit tests.
-4. Add tests for missing input, missing API key, successful generation, copy-only-on-click, reset, and activation failure.
-5. Add Escape-to-hide behavior and manually verify status-bar/hotkey opening across frontmost apps.
+1. Decide whether web UI is for composer only or composer plus settings.
+2. Decide whether to use `WKWebView` with static bundled assets or a frontend workspace with a build step.
+3. Define the Swift-to-web bridge commands and data models.
+4. Decide how the bridge preserves v1 privacy constraints.
+5. Evaluate keyboard focus, IME behavior, accessibility, startup latency, and open-source contributor ergonomics.
 
-This slice improves confidence before adding larger UX or provider features.
+Keep implementation paused until the architecture and tradeoffs are clear.
 
 ## Handoff Prompt
 
-Use this prompt when starting a new conversation:
+Use this prompt when starting a general development conversation:
 
 ```text
 We are continuing development of Inputo in /Users/wnbot/Projects/Inputo.
 
 Inputo is a macOS-native, Spotlight-like AI input source. It opens from a custom hotkey or menu-bar item, lets the user transform text with an OpenAI-compatible provider, copies only when the user clicks Copy, and then lets the user jump back to target apps through app anchors. v1 does not auto-paste, does not save input/generated history, does not execute MCP/tools, does not use screenshots/window titles, and should stay privacy-conservative.
+
+Current state:
+- The Xcode app target is thin and hosts lifecycle/menu/window code.
+- Product code lives in `InputoModules`.
+- `AppState` already uses small service protocols with live and fake services.
+- Provider validation, request-shape tests, error redaction, cancellation, neutral connection testing, and macOS network entitlement are in place.
+- The native composer is compact and single-column: anchors, preview, preset/instruction, input, actions.
+- Settings window sizing has been stabilized.
+- The next discussion is about whether and how to add a hybrid web UI later, while keeping native shell and platform services.
 
 Architecture rules:
 - Use the existing Xcode app + local SwiftPM package structure.
@@ -88,13 +109,13 @@ Architecture rules:
 - Product code lives in `InputoModules`.
 - `InputoCore` must stay Foundation-only and cross-platform-friendly.
 - `InputoMacPlatform` owns macOS services.
-- `InputoComposerFeature` owns composer/settings UI and feature orchestration.
+- `InputoComposerFeature` owns composer/settings UI and feature orchestration for now.
 - No CocoaPods, Carthage, XcodeGen, or project generators.
 - Follow current Apple SwiftUI/AppKit conventions.
 
-Please read README.md, Docs/ARCHITECTURE.md, Docs/DEVELOPMENT.md, and Docs/HANDOVER.md first. Then inspect the relevant code before making changes.
+Please read README.md, Docs/ARCHITECTURE.md, Docs/DEVELOPMENT.md, Docs/HANDOVER.md, and Docs/HANDOVER_WEB_UI_DISCUSSION.md first. Then inspect relevant code before making changes.
 
-Recommended next task: refactor `AppState` for dependency injection through small service protocols, add fake services, and add unit tests for generate/copy/reset/anchor flows. Keep behavior unchanged unless a bug is found. Verify with:
+For implementation changes, verify with:
 `swift test --package-path InputoModules`
 `xcodebuild -project Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build`
 ```

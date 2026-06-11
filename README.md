@@ -34,6 +34,8 @@ Cross-platform contracts live in `Contracts/inputo.v1.schema.json`. The future W
 - `Docs/ARCHITECTURE.md`: architecture, module boundaries, and future shared-core path.
 - `Docs/DEVELOPMENT.md`: current roadmap, todo list, verification commands, and manual QA checklist.
 - `Docs/HANDOVER.md`: concise project state for future conversations or contributors.
+- `Docs/HANDOVER_WEB_UI_DISCUSSION.md`: handover prompt for discussing a future native-shell + web-UI direction.
+- `Docs/WEB_UI_ARCHITECTURE.md`: planned web-agent/native-executor architecture, bridge boundary, streaming model, and tool ecosystem direction.
 
 ## Project Layout
 
