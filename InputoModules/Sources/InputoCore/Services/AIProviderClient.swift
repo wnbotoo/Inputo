@@ -1,6 +1,6 @@
 import Foundation
 
-public struct AIProviderClient {
+public struct AIProviderClient: Sendable {
     private let session: URLSession
 
     public init(session: URLSession = .shared) {

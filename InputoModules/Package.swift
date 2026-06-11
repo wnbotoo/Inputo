@@ -34,6 +34,15 @@ let package = Package(
             name: "InputoCoreTests",
             dependencies: ["InputoCore"],
             path: "Tests/InputoCoreTests"
+        ),
+        .testTarget(
+            name: "InputoComposerFeatureTests",
+            dependencies: [
+                "InputoCore",
+                "InputoMacPlatform",
+                "InputoComposerFeature"
+            ],
+            path: "Tests/InputoComposerFeatureTests"
         )
     ],
     swiftLanguageModes: [.v6]

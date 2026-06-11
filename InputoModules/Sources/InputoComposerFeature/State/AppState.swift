@@ -21,10 +21,7 @@ public final class AppState: ObservableObject {
     public var onRequestSettings: (() -> Void)?
     public var onSettingsChanged: ((AppSettings) -> Void)?
 
-    private let settingsStore = SettingsStore()
-    private let keychain = KeychainService()
-    private let clipboard = ClipboardService()
-    private let anchorService = AnchorService()
+    private let services: AppStateServices
 
     public var recipes: [TransformRecipe] {
         TransformRecipe.builtIns + settings.customPresets
@@ -34,35 +31,41 @@ public final class AppState: ObservableObject {
         recipes.first(where: { $0.id == selectedRecipeID }) ?? TransformRecipe.builtIns[0]
     }
 
-    private init() {
-        let loaded = settingsStore.load()
+    public convenience init() {
+        self.init(services: .live())
+    }
+
+    public init(services: AppStateServices) {
+        self.services = services
+        let loaded = services.settings.loadSettings()
         settings = loaded
         selectedRecipeID = TransformRecipe.builtIns[0].id
     }
 
     public func refreshAnchors() {
-        anchors = anchorService.currentAnchors()
+        anchors = services.anchors.currentAnchors()
     }
 
-    public func generate() {
+    @discardableResult
+    public func generate() -> Task<Void, Never> {
         let trimmedInput = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedInput.isEmpty else {
             errorMessage = "Add text to transform first."
-            return
+            return Task { @MainActor in }
         }
 
         isGenerating = true
         errorMessage = nil
         statusMessage = nil
 
-        Task {
+        let task = Task {
             do {
-                let apiKey = try keychain.readAPIKey()
+                let apiKey = try services.apiKeys.readAPIKey()
                 guard !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                     throw AIProviderError.missingAPIKey
                 }
 
-                let result = try await AIProviderClient().transform(
+                let result = try await services.textTransformer.transformText(
                     text: trimmedInput,
                     instruction: instruction.trimmingCharacters(in: .whitespacesAndNewlines),
                     recipe: selectedRecipe,
@@ -76,6 +79,7 @@ public final class AppState: ObservableObject {
             }
             isGenerating = false
         }
+        return task
     }
 
     public func copyOutput() {
@@ -84,7 +88,7 @@ public final class AppState: ObservableObject {
             errorMessage = "Generate a result before copying."
             return
         }
-        clipboard.copy(trimmedOutput)
+        services.clipboard.copy(trimmedOutput)
         statusMessage = "Copied to clipboard."
         errorMessage = nil
     }
@@ -94,7 +98,7 @@ public final class AppState: ObservableObject {
     }
 
     public func activate(anchor: AppAnchor) -> Bool {
-        let didActivate = anchorService.activate(anchor)
+        let didActivate = services.anchors.activate(anchor)
         if !didActivate {
             statusMessage = nil
             errorMessage = "Could not switch to \(anchor.appName). Please switch manually."
@@ -117,9 +121,9 @@ public final class AppState: ObservableObject {
 
     public func saveSettings(_ newSettings: AppSettings, apiKey: String?) {
         settings = newSettings
-        settingsStore.save(newSettings)
+        services.settings.saveSettings(newSettings)
         if let apiKey {
-            keychain.saveAPIKey(apiKey)
+            services.apiKeys.saveAPIKey(apiKey)
         }
         if !recipes.contains(where: { $0.id == selectedRecipeID }) {
             selectedRecipeID = TransformRecipe.builtIns[0].id
@@ -128,6 +132,6 @@ public final class AppState: ObservableObject {
     }
 
     public func currentAPIKeyForEditing() -> String {
-        (try? keychain.readAPIKey()) ?? ""
+        (try? services.apiKeys.readAPIKey()) ?? ""
     }
 }
