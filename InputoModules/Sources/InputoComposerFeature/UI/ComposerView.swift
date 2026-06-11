@@ -14,16 +14,20 @@ public struct ComposerView: View {
             VisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
                 .ignoresSafeArea()
 
-            VStack(spacing: 12) {
+            VStack(spacing: 8) {
                 header
                 if let providerSetupMessage = appState.providerSetupMessage {
                     ProviderSetupBanner(appState: appState, message: providerSetupMessage)
                 }
                 AnchorBarView(appState: appState)
-                PreviewPanel(appState: appState)
-                ComposerInputPanel(appState: appState, focusedField: $focusedField)
+                HStack(alignment: .top, spacing: 10) {
+                    ComposerInputPanel(appState: appState, focusedField: $focusedField)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    PreviewPanel(appState: appState)
+                        .frame(minWidth: 280, idealWidth: 300, maxWidth: 320, maxHeight: .infinity)
+                }
             }
-            .padding(18)
+            .padding(12)
         }
         .onReceive(NotificationCenter.default.publisher(for: .inputoFocusComposer)) { _ in
             focusedField = .input
@@ -81,28 +85,14 @@ private struct AnchorBarView: View {
     @ObservedObject var appState: AppState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Jump target")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Button {
-                    appState.refreshAnchors()
-                } label: {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .buttonStyle(.borderless)
-                .help("Refresh app anchors")
-            }
-
+        HStack(spacing: 8) {
+            Text("Jump target")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
             if appState.anchors.isEmpty {
-                Text("No app anchors available.")
+                Text("No anchors")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(10)
-                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -122,16 +112,23 @@ private struct AnchorBarView: View {
                                         .lineLimit(1)
                                 }
                                 .padding(.horizontal, 10)
-                                .padding(.vertical, 7)
+                                .padding(.vertical, 5)
                             }
                             .buttonStyle(.plain)
                             .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
                             .help("Switch to \(anchor.appName)")
                         }
                     }
-                    .padding(.vertical, 1)
                 }
             }
+
+            Button {
+                appState.refreshAnchors()
+            } label: {
+                Image(systemName: "arrow.clockwise")
+            }
+            .buttonStyle(.borderless)
+            .help("Refresh app anchors")
         }
     }
 }
@@ -140,7 +137,7 @@ private struct PreviewPanel: View {
     @ObservedObject var appState: AppState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Label("Preview", systemImage: "doc.text.magnifyingglass")
                     .font(.subheadline.weight(.semibold))
@@ -178,7 +175,7 @@ private struct PreviewPanel: View {
                     }
                 }
             }
-            .frame(minHeight: 180)
+            .frame(maxHeight: .infinity)
 
             if let error = appState.errorMessage {
                 Label(error, systemImage: "exclamationmark.triangle")
@@ -190,7 +187,7 @@ private struct PreviewPanel: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(14)
+        .padding(10)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
     }
 }
@@ -200,7 +197,7 @@ private struct ComposerInputPanel: View {
     var focusedField: FocusState<ComposerFocusField?>.Binding
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(appState.recipes) { recipe in
@@ -210,7 +207,7 @@ private struct ComposerInputPanel: View {
                             Text(recipe.name)
                                 .font(.caption.weight(.medium))
                                 .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
+                                .padding(.vertical, 5)
                         }
                         .buttonStyle(.plain)
                         .background(
@@ -241,7 +238,7 @@ private struct ComposerInputPanel: View {
                         .allowsHitTesting(false)
                 }
             }
-            .frame(minHeight: 112)
+            .frame(minHeight: 72, maxHeight: .infinity)
 
             HStack {
                 Button {
@@ -279,7 +276,7 @@ private struct ComposerInputPanel: View {
                 .disabled(appState.isGenerating || appState.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
-        .padding(14)
+        .padding(10)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
     }
 }

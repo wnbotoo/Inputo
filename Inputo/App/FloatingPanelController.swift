@@ -22,7 +22,7 @@ final class FloatingPanelController: NSObject, NSWindowDelegate {
         let hostingView = NSHostingView(rootView: contentView)
 
         panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 820, height: 620),
+            contentRect: NSRect(x: 0, y: 0, width: 860, height: 320),
             styleMask: [.titled, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -76,10 +76,13 @@ final class FloatingPanelController: NSObject, NSWindowDelegate {
     private func positionPanel() {
         let screen = NSScreen.main ?? NSScreen.screens.first
         let visibleFrame = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-        let width = min(820, visibleFrame.width - 64)
-        let height = min(620, visibleFrame.height - 96)
+        let width = min(860, visibleFrame.width - 64)
+        let targetHeight = visibleFrame.height * 0.34
+        let maxHeight = visibleFrame.height * 0.5
+        let height = min(max(280, targetHeight), maxHeight)
+        let bottomMargin = max(28, min(56, visibleFrame.height * 0.05))
         let x = visibleFrame.midX - width / 2
-        let y = visibleFrame.minY + 72
+        let y = visibleFrame.minY + bottomMargin
         panel.setFrame(NSRect(x: x, y: y, width: width, height: height), display: true)
     }
 }
