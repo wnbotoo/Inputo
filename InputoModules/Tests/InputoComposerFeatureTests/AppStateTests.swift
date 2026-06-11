@@ -332,6 +332,116 @@ func nativeExecutorSnapshotMarksFileToolsAsUserGrantedInAssistedWorkflow() {
 
 @MainActor
 @Test
+func bridgeDispatcherReturnsToolsList() throws {
+    let harness = makeHarness()
+    let dispatcher = InputoNativeBridgeDispatcher(appState: harness.state)
+
+    let response = try dispatch(
+        tool: .toolsList,
+        id: "tools-request",
+        dispatcher: dispatcher,
+        payloadType: [InputoNativeToolDescriptor].self
+    )
+
+    #expect(response.id == "tools-request")
+    #expect(response.ok == true)
+    #expect(response.payload?.map(\.id) == InputoNativeToolDescriptor.v1DefaultTools.map(\.id))
+    #expect(response.error == nil)
+}
+
+@MainActor
+@Test
+func bridgeDispatcherReturnsComposerSettingsAndPermissionsSnapshots() throws {
+    let settings = AppSettings(
+        provider: AIProviderConfig(
+            baseURL: "https://provider.example",
+            model: "inputo-test",
+            timeoutSeconds: 20,
+            headers: ["X-Provider-Token": "header-secret"]
+        ),
+        hotKey: nil,
+        customPresets: []
+    )
+    let harness = makeHarness(settings: settings, apiKey: "stored-api-key")
+    harness.state.inputText = "Draft"
+    harness.state.instruction = "Make it warmer"
+    harness.state.outputText = "Generated"
+    let dispatcher = InputoNativeBridgeDispatcher(appState: harness.state)
+
+    let composer = try dispatch(
+        tool: .composerGetState,
+        id: "composer-request",
+        dispatcher: dispatcher,
+        payloadType: InputoComposerSnapshot.self
+    )
+    let settingsSummary = try dispatch(
+        tool: .settingsSummary,
+        id: "settings-request",
+        dispatcher: dispatcher,
+        payloadType: InputoSettingsSummary.self
+    )
+    let permissions = try dispatch(
+        tool: .permissionsStatus,
+        id: "permissions-request",
+        dispatcher: dispatcher,
+        payloadType: [InputoPermissionSnapshot].self
+    )
+    let settingsJSON = try responseJSON(
+        tool: .settingsSummary,
+        id: "settings-json-request",
+        dispatcher: dispatcher
+    )
+
+    #expect(composer.payload?.draftText == "Draft")
+    #expect(composer.payload?.generatedOutput == "Generated")
+    #expect(settingsSummary.payload?.provider.hasAPIKey == true)
+    #expect(settingsSummary.payload?.provider.endpointPreview == "https://provider.example/v1/chat/completions")
+    #expect(permissions.payload?.contains { $0.id == .screenRecording && $0.state == .notRequested } == true)
+    #expect(settingsJSON.contains("stored-api-key") == false)
+    #expect(settingsJSON.contains("header-secret") == false)
+}
+
+@MainActor
+@Test
+func bridgeDispatcherRejectsUnsupportedVersionUnknownToolAndUnimplementedTool() throws {
+    let harness = makeHarness()
+    let dispatcher = InputoNativeBridgeDispatcher(appState: harness.state)
+
+    let unsupportedVersion = try errorResponse(
+        """
+        {"version":999,"id":"old-request","type":"tool.call","tool":"tools.list","payload":{}}
+        """,
+        dispatcher: dispatcher
+    )
+    let unknownTool = try errorResponse(
+        """
+        {"version":1,"id":"unknown-request","type":"tool.call","tool":"native.runShell","payload":{}}
+        """,
+        dispatcher: dispatcher
+    )
+    let unimplemented = try errorResponse(
+        try request(
+            tool: .llmChat,
+            id: "llm-request",
+            payload: InputoLLMChatRequest(
+                draftText: "Draft",
+                instruction: "",
+                recipeID: "polish"
+            )
+        ),
+        dispatcher: dispatcher
+    )
+
+    #expect(unsupportedVersion.ok == false)
+    #expect(unsupportedVersion.error?.code == .unsupportedVersion)
+    #expect(unknownTool.ok == false)
+    #expect(unknownTool.error?.code == .unknownTool)
+    #expect(unimplemented.ok == false)
+    #expect(unimplemented.error?.code == .policyViolation)
+}
+
+@MainActor
+@Test
 func cancelActiveGenerationCancelsInFlightProviderResult() async {
     let settingsService = FakeSettingsService(settings: .default)
     let apiKeyService = FakeAPIKeyService(apiKey: "test-key")
@@ -361,6 +471,59 @@ func cancelActiveGenerationCancelsInFlightProviderResult() async {
     #expect(state.statusMessage == nil)
     #expect(state.errorMessage == nil)
     #expect(clipboard.copiedTexts.isEmpty)
+}
+
+@MainActor
+private func dispatch<Payload: Codable & Equatable & Sendable>(
+    tool: InputoNativeToolID,
+    id: String,
+    dispatcher: InputoNativeBridgeDispatcher,
+    payloadType _: Payload.Type
+) throws -> InputoBridgeToolResultEnvelope<Payload> {
+    let json = try request(tool: tool, id: id, payload: InputoEmptyPayload())
+    let response = dispatcher.dispatch(json)
+    return try JSONDecoder().decode(InputoBridgeToolResultEnvelope<Payload>.self, from: Data(response.utf8))
+}
+
+@MainActor
+private func errorResponse(
+    _ json: String,
+    dispatcher: InputoNativeBridgeDispatcher
+) throws -> InputoBridgeToolResultEnvelope<InputoEmptyPayload> {
+    let response = dispatcher.dispatch(json)
+    return try JSONDecoder().decode(
+        InputoBridgeToolResultEnvelope<InputoEmptyPayload>.self,
+        from: Data(response.utf8)
+    )
+}
+
+@MainActor
+private func responseJSON<Payload: Codable & Equatable & Sendable>(
+    tool: InputoNativeToolID,
+    id: String,
+    dispatcher: InputoNativeBridgeDispatcher,
+    payload: Payload
+) throws -> String {
+    dispatcher.dispatch(try request(tool: tool, id: id, payload: payload))
+}
+
+@MainActor
+private func responseJSON(
+    tool: InputoNativeToolID,
+    id: String,
+    dispatcher: InputoNativeBridgeDispatcher
+) throws -> String {
+    try responseJSON(tool: tool, id: id, dispatcher: dispatcher, payload: InputoEmptyPayload())
+}
+
+private func request<Payload: Codable & Equatable & Sendable>(
+    tool: InputoNativeToolID,
+    id: String,
+    payload: Payload
+) throws -> String {
+    let envelope = InputoBridgeToolCallEnvelope(id: id, tool: tool, payload: payload)
+    let data = try JSONEncoder().encode(envelope)
+    return String(decoding: data, as: UTF8.self)
 }
 
 @MainActor

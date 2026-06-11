@@ -30,9 +30,9 @@ Phase 1 has started with the smallest stable contract surface:
 - `InputoCore` owns Foundation-only executor contracts in `NativeExecutorContract.swift`.
 - Native tools are allowlisted and carry policy metadata: side-effect class, minimum agent mode, explicit-action requirement, per-call confirmation, cancellation support, and streaming support.
 - File tools are contract-only and grant-based: future reads/writes must go through native picker/save-panel grants rather than arbitrary Web-provided paths.
-- Bridge message DTOs are versioned and typed, but there is no JSON dispatcher yet.
+- A first read-only JSON bridge dispatcher exists in `InputoComposerFeature` for `tools.list`, `composer.getState`, `settings.summary`, and `permissions.status`.
 - `AppState.nativeExecutorSnapshot(agentMode:)` separates capability state from SwiftUI presentation enough for a future bridge host to read state without importing SwiftUI.
-- Tests cover contract encoding, conservative tool policy, provider-error mapping, snapshot privacy, and cancellation.
+- Tests cover contract encoding, conservative tool policy, provider-error mapping, snapshot privacy, bridge read-only dispatch, bridge error envelopes, and cancellation.
 - React, Vite, WKWebView hosting, and Web agent planner work remain intentionally unstarted.
 
 ## Development Principles
@@ -66,7 +66,7 @@ Phase 1 has started with the smallest stable contract surface:
 
 4. Build the bridge host before adding frontend tooling.
    - Keep the native shell and service boundaries intact.
-   - Implement a JSON dispatcher over the typed executor DTOs.
+   - Expand the JSON dispatcher over the typed executor DTOs.
    - Test allowlisting, safe errors, cancellation, and streaming event coalescing with fake services.
    - Implement grant-based file tools only after dispatcher policy and confirmation UI are in place.
    - Do not start React/Vite or a WKWebView surface until the dispatcher is proven.

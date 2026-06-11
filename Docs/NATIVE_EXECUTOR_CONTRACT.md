@@ -140,11 +140,30 @@ Phase 2 should prove the contract without building the final Web UI:
 
 Only after this dispatcher works should Inputo add a minimal `WKWebView` host or React/Vite workspace.
 
+## Phase 2A Landing
+
+The first dispatcher slice now lives in `InputoComposerFeature`:
+
+- `Bridge/InputoNativeBridgeDispatcher.swift`
+- accepts version 1 `tool.call` JSON envelopes
+- returns version 1 `tool.result` JSON envelopes
+- implements `tools.list`
+- implements `composer.getState`
+- implements `settings.summary`
+- implements `permissions.status`
+- rejects unsupported bridge versions
+- rejects unknown tools
+- rejects declared-but-unimplemented tools with a display-safe policy error
+
+The dispatcher is intentionally read-only. It does not execute LLM calls, write the clipboard, activate apps, open settings, access files, fetch network resources, or host Web UI.
+
+Read-only request fixtures live in `Contracts/examples/bridge-readonly-tool-calls.v1.json`.
+
 ## Placeholder Implementation Expectations
 
 Placeholder contracts should be implemented in dependency order, not by starting a frontend first:
 
-1. Phase 2A: implement the JSON bridge dispatcher, `tools.list`, `composer.getState`, `settings.summary`, and `permissions.status`.
+1. Phase 2A: implement the JSON bridge dispatcher, `tools.list`, `composer.getState`, `settings.summary`, and `permissions.status`. Done.
 2. Phase 2B: wire existing native `AppState` actions as tools: composer draft/recipe/clear, `llm.chat`, `llm.cancel`, `clipboard.copyGeneratedOutput`, `appAnchors.list`, `appAnchors.activate`, and `settings.open`.
 3. Phase 2C: add event emission, request-id cancellation, streaming delta coalescing, and `llm.stream`.
 4. Phase 2D: implement grant-based file picker/read/write tools after bridge policy and confirmation UI exist.

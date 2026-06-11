@@ -1,0 +1,30 @@
+[
+  {
+    "version": 1,
+    "id": "tools-request",
+    "type": "tool.call",
+    "tool": "tools.list",
+    "payload": {}
+  },
+  {
+    "version": 1,
+    "id": "composer-request",
+    "type": "tool.call",
+    "tool": "composer.getState",
+    "payload": {}
+  },
+  {
+    "version": 1,
+    "id": "settings-request",
+    "type": "tool.call",
+    "tool": "settings.summary",
+    "payload": {}
+  },
+  {
+    "version": 1,
+    "id": "permissions-request",
+    "type": "tool.call",
+    "tool": "permissions.status",
+    "payload": {}
+  }
+]

@@ -683,6 +683,14 @@ Tasks:
 
 This phase can be tested without `WKWebView` by sending JSON fixtures into the dispatcher.
 
+Initial landing:
+
+- `InputoComposerFeature/Bridge/InputoNativeBridgeDispatcher.swift` accepts versioned `tool.call` JSON envelopes and returns `tool.result` envelopes.
+- The first dispatcher slice is read-only: `tools.list`, `composer.getState`, `settings.summary`, and `permissions.status`.
+- Unsupported versions, unknown tools, and declared-but-unimplemented tools return display-safe error envelopes.
+- Request fixtures live in `Contracts/examples/bridge-readonly-tool-calls.v1.json`.
+- Side-effecting tools, streaming, event emission, and request-id cancellation are still pending.
+
 ### Phase 3: Add Minimal WKWebView Host
 
 Goal: embed a local web surface while keeping the native composer available as fallback.
