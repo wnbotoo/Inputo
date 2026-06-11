@@ -37,6 +37,90 @@ func builtInRecipesExposeStableIDs() {
 }
 
 @Test
+func nativeExecutorContractEncodesVersionedToolCallEnvelope() throws {
+    let envelope = InputoBridgeToolCallEnvelope(
+        id: "request-1",
+        tool: .llmChat,
+        payload: InputoLLMChatRequest(
+            draftText: "Hello",
+            instruction: "Make it warmer",
+            recipeID: "polish"
+        )
+    )
+
+    let data = try JSONEncoder().encode(envelope)
+    let decoded = try JSONDecoder().decode(
+        InputoBridgeToolCallEnvelope<InputoLLMChatRequest>.self,
+        from: data
+    )
+    let json = String(decoding: data, as: UTF8.self)
+
+    #expect(decoded == envelope)
+    #expect(decoded.version == InputoBridgeContract.version)
+    #expect(json.contains(#""type":"tool.call""#))
+    #expect(json.contains(#""tool":"llm.chat""#))
+}
+
+@Test
+func nativeExecutorDefaultToolsAreConservativeInManualMode() throws {
+    let tools = InputoNativeToolDescriptor.v1DefaultTools
+    let toolIDs = Set(tools.map(\.id))
+
+    #expect(toolIDs == Set(InputoNativeToolID.allCases))
+    #expect(try #require(tools.first { $0.id == .llmStream }) .streams == true)
+    #expect(try #require(tools.first { $0.id == .llmChat }) .supportsCancellation == true)
+    #expect(try #require(tools.first { $0.id == .clipboardCopyGeneratedOutput }) .requiresExplicitUserAction == true)
+    #expect(try #require(tools.first { $0.id == .appAnchorsActivate }) .requiresExplicitUserAction == true)
+    #expect(try #require(tools.first { $0.id == .filesPickReadable }) .isAvailable(in: .manualTransform) == false)
+    #expect(try #require(tools.first { $0.id == .filesReadText }) .requiresPerCallConfirmation == true)
+    #expect(try #require(tools.first { $0.id == .filesPickWritable }) .isAvailable(in: .manualTransform) == false)
+    #expect(try #require(tools.first { $0.id == .filesWriteText }) .requiresPerCallConfirmation == true)
+    #expect(try #require(tools.first { $0.id == .networkFetch }) .isAvailable(in: .manualTransform) == false)
+    #expect(try #require(tools.first { $0.id == .networkFetch }) .requiresPerCallConfirmation == true)
+}
+
+@Test
+func nativeFileToolDTOsUseGrantsInsteadOfPaths() throws {
+    let grant = InputoFileGrantSnapshot(
+        id: "grant-1",
+        scope: .read,
+        displayName: "draft.txt",
+        contentType: "public.text",
+        byteCount: 42,
+        expiresAt: nil
+    )
+    let response = InputoFileReadTextResponse(
+        grantID: grant.id,
+        displayName: grant.displayName,
+        text: "Hello",
+        encoding: "utf-8"
+    )
+
+    let data = try JSONEncoder().encode(response)
+    let json = String(decoding: data, as: UTF8.self)
+    let decoded = try JSONDecoder().decode(InputoFileReadTextResponse.self, from: data)
+
+    #expect(decoded == response)
+    #expect(json.contains("grant-1"))
+    #expect(json.contains("draft.txt"))
+    #expect(json.contains("path") == false)
+    #expect(json.contains("/Users/") == false)
+}
+
+@Test
+func nativeExecutorErrorsMapProviderFailuresToSafeCodes() {
+    let missingKey = InputoNativeToolError.from(AIProviderError.missingAPIKey)
+    let network = InputoNativeToolError.from(AIProviderError.cannotResolveHost("provider.example"))
+    let invalidConfig = InputoNativeToolError.from(AIProviderError.invalidModel)
+
+    #expect(missingKey.code == .missingAPIKey)
+    #expect(missingKey.retryable == false)
+    #expect(network.code == .networkUnavailable)
+    #expect(network.retryable == true)
+    #expect(invalidConfig.code == .providerConfigurationInvalid)
+}
+
+@Test
 func providerConfigValidationBuildsChatCompletionsEndpoint() throws {
     let config = AIProviderConfig(
         baseURL: " https://provider.example/api/v1/ ",

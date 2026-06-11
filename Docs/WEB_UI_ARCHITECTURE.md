@@ -142,6 +142,10 @@ Examples of native-hosted tools:
 - `settings.open`
 - `permissions.status`
 - `permissions.request`
+- `files.pickReadable`
+- `files.readText`
+- `files.pickWritable`
+- `files.writeText`
 - future `connector.call`
 - future `mcp.callTool`
 
@@ -153,6 +157,8 @@ The bridge should never expose broad APIs such as:
 - `native.writeClipboard`
 - `native.activateApp`
 - `native.requestPermission`
+- `native.readFile`
+- `native.writeFile`
 
 Instead, each capability is a named tool with a schema, policy, lifecycle, and review surface.
 
@@ -308,6 +314,7 @@ This is the v1-compatible baseline.
 - Web agent can suggest tool calls.
 - Side-effecting tools require user confirmation.
 - Network tools are manifest-bound and visible.
+- File tools require native picker or save-panel grants.
 - Native executor still owns all execution.
 
 This is the likely first agent expansion.
@@ -415,6 +422,13 @@ Permissions:
 - `permissions.status`
 - `permissions.request`
 
+Files:
+
+- `files.pickReadable`
+- `files.readText`
+- `files.pickWritable`
+- `files.writeText`
+
 Network:
 
 - `network.fetch`
@@ -506,6 +520,7 @@ If a web surface is introduced:
 - Do not expose API keys to JavaScript.
 - Do not allow generic native APIs across the bridge.
 - Do not allow default direct browser network access for agent tools.
+- Do not expose arbitrary filesystem paths or broad file read/write APIs to Web.
 - Do not persist user input or generated output in web storage by default.
 - Keep v1 defaults: no automatic paste, no saved input history, no saved generation history, no screenshots, no window-title capture, and no default tool execution.
 - Make higher agent modes explicit and user-visible.
@@ -643,6 +658,14 @@ Likely package location:
 - `InputoCore` for cross-platform DTOs and contracts
 - `InputoComposerFeature` or a future feature target for orchestration
 - `InputoMacPlatform` for macOS adapters
+
+Initial landing:
+
+- `InputoCore/Models/NativeExecutorContract.swift` defines the first versioned DTOs for tool ids, bridge messages, errors, cancellation, streaming events, permissions, and native executor snapshots.
+- File read/write is represented as grant-based contract-only tools that require assisted workflow mode, explicit user action, and per-call confirmation.
+- `InputoComposerFeature.AppState` exposes `nativeExecutorSnapshot(agentMode:)` and `cancelActiveGeneration()` as the current adapter over the native v0.1 state.
+- This is not yet the bridge host. JSON dispatch, event emission, streaming coalescing, and request-id cancellation belong to Phase 2.
+- React, Vite, and WKWebView hosting remain deferred until the native bridge dispatcher is proven.
 
 ### Phase 2: Build Bridge Host Without Web UI
 

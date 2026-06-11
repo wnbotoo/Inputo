@@ -18,6 +18,22 @@ The app intentionally avoids automatic paste, input history, generated history, 
 - Settings has a neutral "Save & Test Connection" action that does not use translation as the smoke test.
 - The composer is a compact single-column native SwiftUI panel: target app anchors, preview, preset/instruction controls, input, and actions.
 - Settings window sizing has been stabilized with explicit SwiftUI/AppKit hosting dimensions.
+- Phase 1 native executor DTOs now exist in `InputoCore` for tool ids, tool descriptors, bridge envelopes, streaming events, cancellation, safe errors, grant-based file access payloads, permission snapshots, and native executor state snapshots.
+- `InputoComposerFeature.AppState` can now produce a typed native executor snapshot and expose explicit generation cancellation without moving product behavior into the Xcode app target.
+
+## Phase 0/1 Status
+
+Phase 0 remains the native v0.1 baseline. The app still needs real-device/provider manual QA for the full transform, Copy, app-anchor, menu-bar, hotkey, multi-display, and full-screen Space loops before any web surface replaces native UI.
+
+Phase 1 has started with the smallest stable contract surface:
+
+- `InputoCore` owns Foundation-only executor contracts in `NativeExecutorContract.swift`.
+- Native tools are allowlisted and carry policy metadata: side-effect class, minimum agent mode, explicit-action requirement, per-call confirmation, cancellation support, and streaming support.
+- File tools are contract-only and grant-based: future reads/writes must go through native picker/save-panel grants rather than arbitrary Web-provided paths.
+- Bridge message DTOs are versioned and typed, but there is no JSON dispatcher yet.
+- `AppState.nativeExecutorSnapshot(agentMode:)` separates capability state from SwiftUI presentation enough for a future bridge host to read state without importing SwiftUI.
+- Tests cover contract encoding, conservative tool policy, provider-error mapping, snapshot privacy, and cancellation.
+- React, Vite, WKWebView hosting, and Web agent planner work remain intentionally unstarted.
 
 ## Development Principles
 
@@ -48,11 +64,12 @@ The app intentionally avoids automatic paste, input history, generated history, 
    - Keep provider validation and connection-test diagnostics clear without leaking secrets.
    - Add more explicit permission/status indicators for shortcut and app-anchor behavior.
 
-4. Discuss hybrid web UI after the native loop is proven.
+4. Build the bridge host before adding frontend tooling.
    - Keep the native shell and service boundaries intact.
-   - Evaluate whether a web-rendered composer/settings surface improves iteration, previewing, and open-source contribution.
-   - Design the Swift-to-web bridge before adding frontend tooling.
-   - Do not start a full web rewrite unless the architecture decision explicitly changes.
+   - Implement a JSON dispatcher over the typed executor DTOs.
+   - Test allowlisting, safe errors, cancellation, and streaming event coalescing with fake services.
+   - Implement grant-based file tools only after dispatcher policy and confirmation UI are in place.
+   - Do not start React/Vite or a WKWebView surface until the dispatcher is proven.
 
 ## Backlog
 

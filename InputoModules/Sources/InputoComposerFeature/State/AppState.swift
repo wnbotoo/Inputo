@@ -144,6 +144,10 @@ public final class AppState: ObservableObject {
         errorMessage = nil
     }
 
+    public func cancelActiveGeneration() {
+        cancelGeneration()
+    }
+
     public func openSettings() {
         onRequestSettings?()
     }

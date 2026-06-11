@@ -254,6 +254,116 @@ func testProviderConnectionUsesSavedProviderAndDoesNotCopy() async throws {
 }
 
 @MainActor
+@Test
+func nativeExecutorSnapshotExposesCurrentStateWithoutSecretsOrWindowData() throws {
+    let providerConfig = AIProviderConfig(
+        baseURL: "https://provider.example",
+        model: "inputo-test",
+        timeoutSeconds: 20,
+        headers: ["X-Provider-Token": "header-secret"]
+    )
+    let settings = AppSettings(
+        provider: providerConfig,
+        hotKey: nil,
+        customPresets: [
+            TransformRecipe(
+                id: "custom-test",
+                name: "Custom",
+                systemPrompt: "Rewrite for tests.",
+                outputHint: "Return only rewritten text.",
+                isBuiltIn: false
+            )
+        ]
+    )
+    let anchor = makeAnchor(id: "notes", appName: "Notes", pid: 42)
+    let harness = makeHarness(settings: settings, apiKey: "stored-api-key")
+    harness.anchors.availableAnchors = [anchor]
+
+    harness.state.inputText = "Draft"
+    harness.state.instruction = "Make it warmer"
+    harness.state.outputText = "Generated"
+    harness.state.statusMessage = "Ready"
+    harness.state.refreshAnchors()
+
+    let snapshot = harness.state.nativeExecutorSnapshot()
+    let data = try JSONEncoder().encode(snapshot)
+    let json = String(decoding: data, as: UTF8.self)
+
+    #expect(snapshot.version == InputoBridgeContract.version)
+    #expect(snapshot.agentMode == .manualTransform)
+    #expect(snapshot.composer.draftText == "Draft")
+    #expect(snapshot.composer.generatedOutput == "Generated")
+    #expect(snapshot.composer.canGenerate == true)
+    #expect(snapshot.composer.canCopy == true)
+    #expect(snapshot.settings.provider.hasAPIKey == true)
+    #expect(snapshot.settings.provider.endpointPreview == "https://provider.example/v1/chat/completions")
+    #expect(snapshot.settings.customRecipeCount == 1)
+    #expect(snapshot.anchors == [
+        InputoAppAnchorSnapshot(
+            id: "notes",
+            appName: "Notes",
+            bundleIdentifier: "app.inputo.tests.notes",
+            processIdentifier: 42,
+            lastActiveAt: nil,
+            canActivate: true
+        )
+    ])
+    #expect(snapshot.tools.map(\.id).contains(.llmChat))
+    #expect(snapshot.permissions.contains { $0.id == .screenRecording && $0.state == .notRequested })
+    #expect(snapshot.permissions.contains { $0.id == .fileRead && $0.state == .unavailable })
+    #expect(snapshot.permissions.contains { $0.id == .fileWrite && $0.state == .unavailable })
+    #expect(json.contains("stored-api-key") == false)
+    #expect(json.contains("header-secret") == false)
+    #expect(json.contains("icon") == false)
+    #expect(json.contains("windowTitle") == false)
+}
+
+@MainActor
+@Test
+func nativeExecutorSnapshotMarksFileToolsAsUserGrantedInAssistedWorkflow() {
+    let harness = makeHarness(apiKey: "stored-api-key")
+    let snapshot = harness.state.nativeExecutorSnapshot(agentMode: .assistedWorkflow)
+
+    #expect(snapshot.permissions.contains { $0.id == .fileRead && $0.state == .requiresUserAction })
+    #expect(snapshot.permissions.contains { $0.id == .fileWrite && $0.state == .requiresUserAction })
+    #expect(snapshot.tools.first { $0.id == .filesReadText }?.isAvailable(in: .assistedWorkflow) == true)
+    #expect(snapshot.tools.first { $0.id == .filesWriteText }?.isAvailable(in: .assistedWorkflow) == true)
+}
+
+@MainActor
+@Test
+func cancelActiveGenerationCancelsInFlightProviderResult() async {
+    let settingsService = FakeSettingsService(settings: .default)
+    let apiKeyService = FakeAPIKeyService(apiKey: "test-key")
+    let clipboard = FakeClipboardService()
+    let anchors = FakeAnchorService()
+    let provider = ControlledTextTransformer()
+    let state = AppState(
+        services: AppStateServices(
+            settings: settingsService,
+            apiKeys: apiKeyService,
+            clipboard: clipboard,
+            anchors: anchors,
+            textTransformer: provider
+        )
+    )
+
+    state.inputText = "Draft"
+    let task = state.generate()
+    await provider.waitForRequest()
+
+    state.cancelActiveGeneration()
+    provider.complete(with: "Late result")
+    await task.value
+
+    #expect(state.isGenerating == false)
+    #expect(state.outputText.isEmpty)
+    #expect(state.statusMessage == nil)
+    #expect(state.errorMessage == nil)
+    #expect(clipboard.copiedTexts.isEmpty)
+}
+
+@MainActor
 private func makeHarness(
     settings: AppSettings = .default,
     apiKey: String = "test-key",
