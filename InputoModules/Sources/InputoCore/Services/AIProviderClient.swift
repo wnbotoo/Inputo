@@ -14,16 +14,13 @@ public struct AIProviderClient: Sendable {
         config: AIProviderConfig,
         apiKey: String
     ) async throws -> String {
-        guard let baseURL = URL(string: config.baseURL.trimmingCharacters(in: .whitespacesAndNewlines)) else {
-            throw AIProviderError.invalidBaseURL
-        }
+        let validatedConfig = try config.validated()
 
-        let endpoint = baseURL.appendingPathComponent("v1/chat/completions")
-        var request = URLRequest(url: endpoint, timeoutInterval: config.timeoutSeconds)
+        var request = URLRequest(url: validatedConfig.chatCompletionsURL, timeoutInterval: validatedConfig.timeoutSeconds)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        for (key, value) in config.headers where !key.isEmpty {
+        for (key, value) in validatedConfig.headers {
             request.setValue(value, forHTTPHeaderField: key)
         }
 
@@ -38,7 +35,7 @@ public struct AIProviderClient: Sendable {
         """
 
         let body = ChatCompletionRequest(
-            model: config.model,
+            model: validatedConfig.model,
             messages: [
                 .init(role: "system", content: """
                 \(recipe.systemPrompt)
@@ -57,7 +54,13 @@ public struct AIProviderClient: Sendable {
         }
         guard (200..<300).contains(httpResponse.statusCode) else {
             if let error = try? JSONDecoder().decode(OpenAIErrorResponse.self, from: data) {
-                throw AIProviderError.provider(error.error.message)
+                throw AIProviderError.provider(
+                    redactSensitiveValues(
+                        in: error.error.message,
+                        apiKey: apiKey,
+                        headers: validatedConfig.headers
+                    )
+                )
             }
             throw AIProviderError.httpStatus(httpResponse.statusCode)
         }
@@ -70,8 +73,11 @@ public struct AIProviderClient: Sendable {
     }
 }
 
-public enum AIProviderError: LocalizedError {
+public enum AIProviderError: LocalizedError, Equatable {
     case invalidBaseURL
+    case invalidModel
+    case invalidTimeout
+    case invalidHeader(String)
     case invalidResponse
     case httpStatus(Int)
     case provider(String)
@@ -82,6 +88,12 @@ public enum AIProviderError: LocalizedError {
         switch self {
         case .invalidBaseURL:
             return "Provider base URL is invalid."
+        case .invalidModel:
+            return "Add a provider model before generating."
+        case .invalidTimeout:
+            return "Provider timeout must be between 1 and 300 seconds."
+        case .invalidHeader(let message):
+            return message
         case .invalidResponse:
             return "Provider returned an invalid response."
         case .httpStatus(let status):
@@ -94,6 +106,27 @@ public enum AIProviderError: LocalizedError {
             return "Add an API key in Settings before generating."
         }
     }
+}
+
+private func redactSensitiveValues(in message: String, apiKey: String, headers: [String: String]) -> String {
+    let sensitiveValues = ([apiKey] + headers.compactMap { key, value in
+        isSensitiveHeaderName(key) ? value : nil
+    })
+    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+    .filter { $0.count >= 4 }
+
+    return sensitiveValues.reduce(message) { redacted, value in
+        redacted.replacingOccurrences(of: value, with: "[REDACTED]")
+    }
+}
+
+private func isSensitiveHeaderName(_ name: String) -> Bool {
+    let lowercased = name.lowercased()
+    return lowercased.contains("authorization") ||
+        lowercased.contains("api-key") ||
+        lowercased.contains("token") ||
+        lowercased.contains("secret") ||
+        lowercased.contains("key")
 }
 
 private struct ChatCompletionRequest: Encodable {

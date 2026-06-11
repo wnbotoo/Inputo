@@ -15,6 +15,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
 
         let panelController = FloatingPanelController(appState: appState)
+        panelController.onEscape = { [weak self] in
+            self?.hideComposer(reset: false)
+        }
         self.panelController = panelController
 
         statusBarController = StatusBarController(

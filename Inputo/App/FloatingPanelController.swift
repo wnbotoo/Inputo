@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import InputoComposerFeature
 import SwiftUI
 
@@ -6,6 +7,9 @@ import SwiftUI
 final class FloatingPanelController: NSObject, NSWindowDelegate {
     private let appState: AppState
     private let panel: NSPanel
+    private var keyDownMonitor: Any?
+
+    var onEscape: (() -> Void)?
 
     var isVisible: Bool {
         panel.isVisible
@@ -38,6 +42,19 @@ final class FloatingPanelController: NSObject, NSWindowDelegate {
 
         super.init()
         panel.delegate = self
+        keyDownMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, self.panel.isKeyWindow, event.keyCode == UInt16(kVK_Escape) else {
+                return event
+            }
+            self.onEscape?()
+            return nil
+        }
+    }
+
+    deinit {
+        if let keyDownMonitor {
+            NSEvent.removeMonitor(keyDownMonitor)
+        }
     }
 
     func show() {

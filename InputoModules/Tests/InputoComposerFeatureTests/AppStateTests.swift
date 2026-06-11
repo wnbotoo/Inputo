@@ -34,6 +34,30 @@ func generateRequiresAPIKeyBeforeCallingProvider() async {
 
 @MainActor
 @Test
+func generateValidatesProviderSettingsBeforeCallingProvider() async {
+    let settings = AppSettings(
+        provider: AIProviderConfig(
+            baseURL: "https://provider.example",
+            model: " ",
+            timeoutSeconds: 30,
+            headers: [:]
+        ),
+        hotKey: nil,
+        customPresets: []
+    )
+    let harness = makeHarness(settings: settings, apiKey: "test-key")
+
+    harness.state.inputText = "Hello"
+    await harness.state.generate().value
+
+    #expect(harness.state.providerSetupMessage == AIProviderError.invalidModel.errorDescription)
+    #expect(harness.state.errorMessage == AIProviderError.invalidModel.errorDescription)
+    #expect(harness.state.isGenerating == false)
+    #expect(harness.provider.requests.isEmpty)
+}
+
+@MainActor
+@Test
 func generateStoresPreviewWithoutCopyingUntilUserClicksCopy() async throws {
     let providerConfig = AIProviderConfig(
         baseURL: "https://provider.example",
@@ -95,6 +119,41 @@ func resetSessionClearsTransientComposerState() {
     #expect(harness.state.statusMessage == nil)
     #expect(harness.state.errorMessage == nil)
     #expect(harness.state.isGenerating == false)
+}
+
+@MainActor
+@Test
+func resetSessionCancelsInFlightGenerationAndIgnoresLateProviderResult() async {
+    let settingsService = FakeSettingsService(settings: .default)
+    let apiKeyService = FakeAPIKeyService(apiKey: "test-key")
+    let clipboard = FakeClipboardService()
+    let anchors = FakeAnchorService()
+    let provider = ControlledTextTransformer()
+    let state = AppState(
+        services: AppStateServices(
+            settings: settingsService,
+            apiKeys: apiKeyService,
+            clipboard: clipboard,
+            anchors: anchors,
+            textTransformer: provider
+        )
+    )
+
+    state.inputText = "Draft"
+    let task = state.generate()
+    await provider.waitForRequest()
+    #expect(state.isGenerating == true)
+
+    state.resetSession()
+    provider.complete(with: "Late result")
+    await task.value
+
+    #expect(state.inputText.isEmpty)
+    #expect(state.outputText.isEmpty)
+    #expect(state.statusMessage == nil)
+    #expect(state.errorMessage == nil)
+    #expect(state.isGenerating == false)
+    #expect(clipboard.copiedTexts.isEmpty)
 }
 
 @MainActor
@@ -301,6 +360,51 @@ private final class FakeTextTransformer: TextTransforming {
             )
         )
         return try result.get()
+    }
+}
+
+@MainActor
+private final class ControlledTextTransformer: TextTransforming {
+    private var requestContinuation: CheckedContinuation<Void, Never>?
+    private var resultContinuation: CheckedContinuation<String, Error>?
+    private(set) var requests: [TransformRequest] = []
+
+    func waitForRequest() async {
+        if !requests.isEmpty {
+            return
+        }
+        await withCheckedContinuation { continuation in
+            requestContinuation = continuation
+        }
+    }
+
+    func complete(with result: String) {
+        resultContinuation?.resume(returning: result)
+        resultContinuation = nil
+    }
+
+    func transformText(
+        text: String,
+        instruction: String,
+        recipe: TransformRecipe,
+        config: AIProviderConfig,
+        apiKey: String
+    ) async throws -> String {
+        requests.append(
+            TransformRequest(
+                text: text,
+                instruction: instruction,
+                recipe: recipe,
+                config: config,
+                apiKey: apiKey
+            )
+        )
+        requestContinuation?.resume()
+        requestContinuation = nil
+
+        return try await withCheckedThrowingContinuation { continuation in
+            resultContinuation = continuation
+        }
     }
 }
 

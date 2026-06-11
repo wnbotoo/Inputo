@@ -16,6 +16,9 @@ public struct ComposerView: View {
 
             VStack(spacing: 12) {
                 header
+                if let providerSetupMessage = appState.providerSetupMessage {
+                    ProviderSetupBanner(appState: appState, message: providerSetupMessage)
+                }
                 AnchorBarView(appState: appState)
                 PreviewPanel(appState: appState)
                 ComposerInputPanel(appState: appState, focusedField: $focusedField)
@@ -46,6 +49,34 @@ public struct ComposerView: View {
     }
 }
 
+private struct ProviderSetupBanner: View {
+    @ObservedObject var appState: AppState
+    let message: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle")
+                .foregroundStyle(.orange)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Provider setup needed")
+                    .font(.caption.weight(.semibold))
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button {
+                appState.openSettings()
+            } label: {
+                Label("Settings", systemImage: "gearshape")
+            }
+            .controlSize(.small)
+        }
+        .padding(10)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+    }
+}
+
 private struct AnchorBarView: View {
     @ObservedObject var appState: AppState
 
@@ -66,7 +97,7 @@ private struct AnchorBarView: View {
             }
 
             if appState.anchors.isEmpty {
-                Text("No open app anchors found.")
+                Text("No app anchors available.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -134,7 +165,7 @@ private struct PreviewPanel: View {
                     }
                     .padding(14)
                 } else if appState.outputText.isEmpty {
-                    Text("Generated text will appear here. Inputo will only copy when you click Copy.")
+                    Text("No preview yet.")
                         .foregroundStyle(.secondary)
                         .padding(14)
                 } else {
@@ -238,7 +269,11 @@ private struct ComposerInputPanel: View {
                 Button {
                     appState.generate()
                 } label: {
-                    Label("Generate", systemImage: "wand.and.sparkles")
+                    if appState.isGenerating {
+                        Label("Generating", systemImage: "hourglass")
+                    } else {
+                        Label("Generate", systemImage: "wand.and.sparkles")
+                    }
                 }
                 .keyboardShortcut(.return, modifiers: [.command])
                 .disabled(appState.isGenerating || appState.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

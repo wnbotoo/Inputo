@@ -8,6 +8,7 @@ public final class AppState: ObservableObject {
     public static let shared = AppState()
 
     @Published public private(set) var settings: AppSettings
+    @Published public private(set) var hasAPIKey: Bool
     @Published public var selectedRecipeID: String
     @Published public var instruction: String = ""
     @Published public var inputText: String = ""
@@ -22,6 +23,8 @@ public final class AppState: ObservableObject {
     public var onSettingsChanged: ((AppSettings) -> Void)?
 
     private let services: AppStateServices
+    private var generationTask: Task<Void, Never>?
+    private var activeGenerationID: UUID?
 
     public var recipes: [TransformRecipe] {
         TransformRecipe.builtIns + settings.customPresets
@@ -29,6 +32,16 @@ public final class AppState: ObservableObject {
 
     public var selectedRecipe: TransformRecipe {
         recipes.first(where: { $0.id == selectedRecipeID }) ?? TransformRecipe.builtIns[0]
+    }
+
+    public var providerSetupMessage: String? {
+        if let validationError = settings.provider.validationErrorDescription {
+            return validationError
+        }
+        if !hasAPIKey {
+            return AIProviderError.missingAPIKey.errorDescription
+        }
+        return nil
     }
 
     public convenience init() {
@@ -39,6 +52,7 @@ public final class AppState: ObservableObject {
         self.services = services
         let loaded = services.settings.loadSettings()
         settings = loaded
+        hasAPIKey = Self.hasUsableAPIKey((try? services.apiKeys.readAPIKey()) ?? "")
         selectedRecipeID = TransformRecipe.builtIns[0].id
     }
 
@@ -54,14 +68,20 @@ public final class AppState: ObservableObject {
             return Task { @MainActor in }
         }
 
+        generationTask?.cancel()
+        let generationID = UUID()
+        activeGenerationID = generationID
         isGenerating = true
         errorMessage = nil
         statusMessage = nil
 
-        let task = Task {
+        let task = Task { [weak self] in
+            guard let self else { return }
             do {
+                _ = try settings.provider.validated()
                 let apiKey = try services.apiKeys.readAPIKey()
-                guard !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                hasAPIKey = Self.hasUsableAPIKey(apiKey)
+                guard hasAPIKey else {
                     throw AIProviderError.missingAPIKey
                 }
 
@@ -72,13 +92,17 @@ public final class AppState: ObservableObject {
                     config: settings.provider,
                     apiKey: apiKey
                 )
+                guard !Task.isCancelled, activeGenerationID == generationID else { return }
                 outputText = result
                 statusMessage = "Ready to copy."
+            } catch is CancellationError {
             } catch {
+                guard !Task.isCancelled, activeGenerationID == generationID else { return }
                 errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             }
-            isGenerating = false
+            finishGeneration(id: generationID)
         }
+        generationTask = task
         return task
     }
 
@@ -107,12 +131,12 @@ public final class AppState: ObservableObject {
     }
 
     public func resetSession() {
+        cancelGeneration()
         instruction = ""
         inputText = ""
         outputText = ""
         statusMessage = nil
         errorMessage = nil
-        isGenerating = false
     }
 
     public func openSettings() {
@@ -124,6 +148,7 @@ public final class AppState: ObservableObject {
         services.settings.saveSettings(newSettings)
         if let apiKey {
             services.apiKeys.saveAPIKey(apiKey)
+            hasAPIKey = Self.hasUsableAPIKey(apiKey)
         }
         if !recipes.contains(where: { $0.id == selectedRecipeID }) {
             selectedRecipeID = TransformRecipe.builtIns[0].id
@@ -132,6 +157,26 @@ public final class AppState: ObservableObject {
     }
 
     public func currentAPIKeyForEditing() -> String {
-        (try? services.apiKeys.readAPIKey()) ?? ""
+        let apiKey = (try? services.apiKeys.readAPIKey()) ?? ""
+        hasAPIKey = Self.hasUsableAPIKey(apiKey)
+        return apiKey
+    }
+
+    private func cancelGeneration() {
+        generationTask?.cancel()
+        generationTask = nil
+        activeGenerationID = nil
+        isGenerating = false
+    }
+
+    private func finishGeneration(id: UUID) {
+        guard activeGenerationID == id else { return }
+        generationTask = nil
+        activeGenerationID = nil
+        isGenerating = false
+    }
+
+    private static func hasUsableAPIKey(_ apiKey: String) -> Bool {
+        !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }

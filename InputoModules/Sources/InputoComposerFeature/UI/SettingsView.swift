@@ -47,10 +47,31 @@ public struct SettingsView: View {
                     .monospacedDigit()
             }
 
+            providerStatusRows
+
             Button("Save Provider Settings") {
                 appState.saveSettings(settings, apiKey: apiKey)
             }
             .buttonStyle(.borderedProminent)
+        }
+    }
+
+    @ViewBuilder
+    private var providerStatusRows: some View {
+        if let message = settings.provider.validationErrorDescription {
+            Label(message, systemImage: "exclamationmark.triangle")
+                .font(.caption)
+                .foregroundStyle(.orange)
+        } else {
+            Label("Provider settings look ready.", systemImage: "checkmark.circle")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+
+        if apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            Label("API key is empty.", systemImage: "key")
+                .font(.caption)
+                .foregroundStyle(.orange)
         }
     }
 
