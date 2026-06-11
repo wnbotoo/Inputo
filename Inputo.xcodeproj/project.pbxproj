@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		8545B0242FDAA100009C7694 /* InputoCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8545B0212FDAA100009C7694 /* InputoCore */; };
+		8545B0252FDAA100009C7694 /* InputoMacPlatform in Frameworks */ = {isa = PBXBuildFile; productRef = 8545B0222FDAA100009C7694 /* InputoMacPlatform */; };
+		8545B0262FDAA100009C7694 /* InputoComposerFeature in Frameworks */ = {isa = PBXBuildFile; productRef = 8545B0232FDAA100009C7694 /* InputoComposerFeature */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		8545AEF12FDA9A5C009C7694 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,6 +33,7 @@
 		8545AEE12FDA9A5A009C7694 /* Inputo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Inputo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8545AEF02FDA9A5C009C7694 /* InputoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = InputoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8545AEFA2FDA9A5C009C7694 /* InputoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = InputoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8545B0092FDA9DE6009C7694 /* InputoModules */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = InputoModules; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -52,6 +59,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8545B0262FDAA100009C7694 /* InputoComposerFeature in Frameworks */,
+				8545B0242FDAA100009C7694 /* InputoCore in Frameworks */,
+				8545B0252FDAA100009C7694 /* InputoMacPlatform in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -75,6 +85,7 @@
 		8545AED82FDA9A5A009C7694 = {
 			isa = PBXGroup;
 			children = (
+				8545B0092FDA9DE6009C7694 /* InputoModules */,
 				8545AEE32FDA9A5A009C7694 /* Inputo */,
 				8545AEF32FDA9A5C009C7694 /* InputoTests */,
 				8545AEFD2FDA9A5C009C7694 /* InputoUITests */,
@@ -112,6 +123,9 @@
 			);
 			name = Inputo;
 			packageProductDependencies = (
+				8545B0212FDAA100009C7694 /* InputoCore */,
+				8545B0222FDAA100009C7694 /* InputoMacPlatform */,
+				8545B0232FDAA100009C7694 /* InputoComposerFeature */,
 			);
 			productName = Inputo;
 			productReference = 8545AEE12FDA9A5A009C7694 /* Inputo.app */;
@@ -195,6 +209,9 @@
 			);
 			mainGroup = 8545AED82FDA9A5A009C7694;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				8545B0202FDAA100009C7694 /* XCLocalSwiftPackageReference "InputoModules" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8545AEE22FDA9A5A009C7694 /* Products */;
 			projectDirPath = "";
@@ -573,6 +590,31 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		8545B0202FDAA100009C7694 /* XCLocalSwiftPackageReference "InputoModules" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = InputoModules;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		8545B0212FDAA100009C7694 /* InputoCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8545B0202FDAA100009C7694 /* XCLocalSwiftPackageReference "InputoModules" */;
+			productName = InputoCore;
+		};
+		8545B0222FDAA100009C7694 /* InputoMacPlatform */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8545B0202FDAA100009C7694 /* XCLocalSwiftPackageReference "InputoModules" */;
+			productName = InputoMacPlatform;
+		};
+		8545B0232FDAA100009C7694 /* InputoComposerFeature */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8545B0202FDAA100009C7694 /* XCLocalSwiftPackageReference "InputoModules" */;
+			productName = InputoComposerFeature;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 8545AED92FDA9A5A009C7694 /* Project object */;
 }

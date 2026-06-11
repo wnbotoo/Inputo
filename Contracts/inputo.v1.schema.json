@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://inputo.app/contracts/inputo.v1.schema.json",
+  "title": "Inputo V1 Shared Contract",
+  "type": "object",
+  "defs": {
+    "AIProviderConfig": {
+      "type": "object",
+      "required": ["baseURL", "model", "timeoutSeconds"],
+      "properties": {
+        "baseURL": { "type": "string", "format": "uri" },
+        "model": { "type": "string" },
+        "timeoutSeconds": { "type": "number", "minimum": 1 },
+        "headers": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "apiKeyRef": {
+          "type": "string",
+          "description": "A platform keychain or credential-manager reference. The API key is never serialized into this contract."
+        }
+      }
+    },
+    "TransformRecipe": {
+      "type": "object",
+      "required": ["id", "name", "systemPrompt", "outputHint", "isBuiltIn"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "systemPrompt": { "type": "string" },
+        "outputHint": { "type": "string" },
+        "isBuiltIn": { "type": "boolean" }
+      }
+    },
+    "AppAnchor": {
+      "type": "object",
+      "required": ["appName", "processIdentifier", "canActivate"],
+      "properties": {
+        "appName": { "type": "string" },
+        "bundleIdentifier": { "type": ["string", "null"] },
+        "processIdentifier": { "type": "integer" },
+        "iconRef": { "type": ["string", "null"] },
+        "lastActiveAt": { "type": ["string", "null"], "format": "date-time" },
+        "canActivate": { "type": "boolean" }
+      }
+    }
+  }
+}
