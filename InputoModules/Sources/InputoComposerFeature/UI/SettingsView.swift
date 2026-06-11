@@ -83,6 +83,17 @@ public struct SettingsView: View {
                 .foregroundStyle(.secondary)
         }
 
+        if let endpoint = settings.provider.endpointPreview {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Request URL")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text(endpoint)
+                    .font(.caption.monospaced())
+                    .textSelection(.enabled)
+            }
+        }
+
         if apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             Label("API key is empty.", systemImage: "key")
                 .font(.caption)

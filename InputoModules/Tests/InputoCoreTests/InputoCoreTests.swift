@@ -162,6 +162,35 @@ func providerClientRedactsSensitiveValuesFromProviderErrors() async throws {
     }
 }
 
+@Test
+func providerClientMapsCannotFindHostToActionableError() async throws {
+    let host = "missing.provider.example"
+    let session = MockURLProtocol.makeSession(host: host) { _ in
+        throw URLError(.cannotFindHost)
+    }
+    let client = AIProviderClient(session: session)
+    let config = AIProviderConfig(
+        baseURL: "https://\(host)",
+        model: "inputo-model",
+        timeoutSeconds: 25,
+        headers: [:]
+    )
+
+    do {
+        _ = try await client.transform(
+            text: "Hello",
+            instruction: "",
+            recipe: TransformRecipe.builtIns[0],
+            config: config,
+            apiKey: "sk-test-secret"
+        )
+        Issue.record("Expected cannot-resolve-host error.")
+    } catch {
+        #expect(error as? AIProviderError == .cannotResolveHost(host))
+        #expect((error as? LocalizedError)?.errorDescription?.contains(host) == true)
+    }
+}
+
 private final class MockURLProtocol: URLProtocol {
     typealias Handler = (URLRequest) throws -> (HTTPURLResponse, Data)
 

@@ -90,6 +90,13 @@ extension AIProviderConfig {
         }
     }
 
+    public var endpointPreview: String? {
+        guard let validated = try? validated() else {
+            return nil
+        }
+        return validated.chatCompletionsURL.absoluteString
+    }
+
     private func chatCompletionsURL(for baseURL: URL) -> URL {
         let pathComponents = baseURL.pathComponents.filter { $0 != "/" }
         if pathComponents.suffix(3) == ["v1", "chat", "completions"] {

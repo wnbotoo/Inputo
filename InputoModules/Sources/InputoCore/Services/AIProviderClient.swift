@@ -48,7 +48,14 @@ public struct AIProviderClient: Sendable {
         )
         request.httpBody = try JSONEncoder().encode(body)
 
-        let (data, response) = try await session.data(for: request)
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch let error as URLError {
+            throw mapURLError(error, endpoint: validatedConfig.chatCompletionsURL)
+        }
+
         guard let httpResponse = response as? HTTPURLResponse else {
             throw AIProviderError.invalidResponse
         }
@@ -78,6 +85,8 @@ public enum AIProviderError: LocalizedError, Equatable {
     case invalidModel
     case invalidTimeout
     case invalidHeader(String)
+    case cannotResolveHost(String)
+    case network(String)
     case invalidResponse
     case httpStatus(Int)
     case provider(String)
@@ -94,6 +103,10 @@ public enum AIProviderError: LocalizedError, Equatable {
             return "Provider timeout must be between 1 and 300 seconds."
         case .invalidHeader(let message):
             return message
+        case .cannotResolveHost(let host):
+            return "Cannot resolve provider host: \(host). Check the Base URL, DNS, proxy, or network access."
+        case .network(let message):
+            return message
         case .invalidResponse:
             return "Provider returned an invalid response."
         case .httpStatus(let status):
@@ -105,6 +118,21 @@ public enum AIProviderError: LocalizedError, Equatable {
         case .missingAPIKey:
             return "Add an API key in Settings before generating."
         }
+    }
+}
+
+private func mapURLError(_ error: URLError, endpoint: URL) -> AIProviderError {
+    switch error.code {
+    case .cannotFindHost:
+        return .cannotResolveHost(endpoint.host ?? endpoint.absoluteString)
+    case .notConnectedToInternet:
+        return .network("No internet connection is available.")
+    case .timedOut:
+        return .network("Provider request timed out.")
+    case .cannotConnectToHost:
+        return .network("Cannot connect to provider host: \(endpoint.host ?? endpoint.absoluteString).")
+    default:
+        return .network(error.localizedDescription)
     }
 }
 
