@@ -4,10 +4,10 @@ Inputo is a native macOS MVP for a system-wide AI input source. It behaves like 
 
 ## Run
 
-Open `Inputo.xcodeproj` in Xcode and run the `Inputo` scheme, or build from the command line:
+Open `apps/macos/Inputo.xcodeproj` in Xcode and run the `Inputo` scheme, or build from the command line:
 
 ```bash
-xcodebuild -project Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build
+xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build
 ```
 
 On first launch, open **Inputo > Settings** from the menu bar item, add an OpenAI-compatible base URL, model, API key, and record a shortcut.
@@ -27,24 +27,29 @@ On first launch, open **Inputo > Settings** from the menu bar item, add an OpenA
 
 ## Shared Contracts
 
-Cross-platform contracts live in `Contracts/inputo.v1.schema.json`. The future Windows app should implement the same provider, recipe, and app-anchor concepts with WinUI 3 and Win32 interop.
+Cross-platform contracts live in `contracts/inputo.v1.schema.json`. The future Windows app should implement the same provider, recipe, and app-anchor concepts with WinUI 3 and Win32 interop.
 
 ## Documentation
 
-- `Docs/ARCHITECTURE.md`: architecture, module boundaries, and future shared-core path.
-- `Docs/DEVELOPMENT.md`: current roadmap, todo list, verification commands, and manual QA checklist.
-- `Docs/HANDOVER.md`: concise project state for future conversations or contributors.
-- `Docs/HANDOVER_WEB_UI_DISCUSSION.md`: handover prompt for Phase 4 Web composer engineering and later Web UI discussions.
-- `Docs/NATIVE_EXECUTOR_CONTRACT.md`: Phase 0/1 native executor contract status, DTOs, tool registry, and bridge boundary.
-- `Docs/WEB_COMPOSER.md`: current WKWebView composer body implementation, React/Vite source workspace, security boundary, and packaging model.
-- `Docs/WEB_UI_ARCHITECTURE.md`: planned web-agent/native-executor architecture, bridge boundary, streaming model, and tool ecosystem direction.
+- `docs/ARCHITECTURE.md`: architecture, module boundaries, and future shared-core path.
+- `docs/DEVELOPMENT.md`: current roadmap, todo list, verification commands, and manual QA checklist.
+- `docs/HANDOVER.md`: concise project state for future conversations or contributors.
+- `docs/HANDOVER_WEB_UI_DISCUSSION.md`: handover prompt for Phase 4 Web composer engineering and later Web UI discussions.
+- `docs/NATIVE_EXECUTOR_CONTRACT.md`: Phase 0/1 native executor contract status, DTOs, tool registry, and bridge boundary.
+- `docs/WEB_COMPOSER.md`: current WKWebView composer body implementation, React/Vite source workspace, security boundary, and packaging model.
+- `docs/WEB_UI_ARCHITECTURE.md`: planned web-agent/native-executor architecture, bridge boundary, streaming model, and tool ecosystem direction.
 
 ## Project Layout
 
-- `Inputo.xcodeproj`: thin macOS app target.
-- `Inputo/App`: app lifecycle, window hosting, and menu bar shell.
-- `InputoModules`: local Swift package for product modules.
-- `WebComposer`: React, TypeScript, and Vite source workspace that regenerates the bundled Web composer assets.
+- `apps/macos/Inputo.xcodeproj`: thin macOS app target.
+- `apps/macos/Inputo/App`: app lifecycle, window hosting, and menu bar shell.
+- `apps/macos/InputoModules`: local Swift package for macOS product modules.
+- `packages/web-composer`: React, TypeScript, and Vite source workspace that regenerates the bundled Web composer assets.
+- `packages/bridge-contracts-ts`: reserved package for generated or hand-maintained TypeScript bridge contract helpers.
+- `apps/windows`: reserved location for the future WinUI/WebView2 shell.
+- `contracts`: language-neutral schemas and fixtures.
+- `docs`: architecture, development, and handover notes.
+- `tools`: reserved location for repository automation scripts.
 
 ## SwiftPM Package Targets
 
@@ -54,11 +59,11 @@ Cross-platform contracts live in `Contracts/inputo.v1.schema.json`. The future W
 
 ## Development Policy
 
-Inputo uses Swift Package Manager as the module and dependency baseline. The Xcode project owns only the thin macOS app target and consumes local package products from `InputoModules`. Do not add CocoaPods, Carthage, XcodeGen, or other project generators unless this policy is explicitly changed.
+Inputo uses Swift Package Manager as the module and dependency baseline. The Xcode project owns only the thin macOS app target and consumes local package products from `apps/macos/InputoModules`. Do not add CocoaPods, Carthage, XcodeGen, or other project generators unless this policy is explicitly changed.
 
 Every macOS change should keep these commands working:
 
 ```bash
-swift test --package-path InputoModules
-xcodebuild -project Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build
+swift test --package-path apps/macos/InputoModules
+xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build
 ```

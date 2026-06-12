@@ -32,27 +32,27 @@ The Web body is the only composer body. The previous native SwiftUI composer bod
 
 Swift host:
 
-- `InputoModules/Sources/InputoComposerFeature/UI/InputoWebComposerView.swift`
-- `InputoModules/Sources/InputoComposerFeature/Bridge/InputoWebComposerAssets.swift`
-- `InputoModules/Sources/InputoComposerFeature/UI/ComposerView.swift`
+- `apps/macos/InputoModules/Sources/InputoComposerFeature/UI/InputoWebComposerView.swift`
+- `apps/macos/InputoModules/Sources/InputoComposerFeature/Bridge/InputoWebComposerAssets.swift`
+- `apps/macos/InputoModules/Sources/InputoComposerFeature/UI/ComposerView.swift`
 
 Static assets:
 
-- `InputoModules/Sources/InputoComposerFeature/Resources/WebComposer/index.html`
-- `InputoModules/Sources/InputoComposerFeature/Resources/WebComposer/composer.css`
-- `InputoModules/Sources/InputoComposerFeature/Resources/WebComposer/composer.js`
+- `apps/macos/InputoModules/Sources/InputoComposerFeature/Resources/WebComposer/index.html`
+- `apps/macos/InputoModules/Sources/InputoComposerFeature/Resources/WebComposer/composer.css`
+- `apps/macos/InputoModules/Sources/InputoComposerFeature/Resources/WebComposer/composer.js`
 
-SwiftPM bundles the assets through `InputoModules/Package.swift`.
+SwiftPM bundles the assets through `apps/macos/InputoModules/Package.swift`.
 
 Web source workspace:
 
-- `WebComposer/package.json`
-- `WebComposer/vite.config.ts`
-- `WebComposer/src/App.tsx`
-- `WebComposer/src/bridge`
-- `WebComposer/src/state`
-- `WebComposer/src/styles/composer.css`
-- `WebComposer/src/__tests__`
+- `packages/web-composer/package.json`
+- `packages/web-composer/vite.config.ts`
+- `packages/web-composer/src/App.tsx`
+- `packages/web-composer/src/bridge`
+- `packages/web-composer/src/state`
+- `packages/web-composer/src/styles/composer.css`
+- `packages/web-composer/src/__tests__`
 
 ## Packaging
 
@@ -61,7 +61,7 @@ Phase 4 introduces React + TypeScript + Vite as source tooling for the Web compo
 Xcode and SwiftPM builds must remain independent of Node, `npm install`, network access, and frontend dev servers. Frontend builds are explicit developer or CI commands:
 
 ```bash
-cd WebComposer
+cd packages/web-composer
 npm install
 npm run typecheck
 npm test
@@ -69,10 +69,10 @@ npm run build
 npm run check:assets
 ```
 
-`npm run build` regenerates the production assets in `InputoModules/Sources/InputoComposerFeature/Resources/WebComposer`.
+`npm run build` regenerates the production assets in `apps/macos/InputoModules/Sources/InputoComposerFeature/Resources/WebComposer`.
 `npm run check:assets` builds into a temporary directory and verifies that the generated files match the checked-in bundled assets without modifying the repository.
 
-CI should run `npm ci` and `npm run verify` from `WebComposer`. The macOS Xcode build should continue to consume checked-in static assets only.
+CI should run `npm ci` and `npm run verify` from `packages/web-composer`. The macOS Xcode build should continue to consume checked-in static assets only.
 
 ## Bridge Boundary
 
@@ -207,9 +207,9 @@ The richer Web agent planner remains a later phase.
 Run before handoff:
 
 ```bash
-cd WebComposer
+cd packages/web-composer
 npm run verify
 cd ..
-swift test --package-path InputoModules
-xcodebuild -project Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build
+swift test --package-path apps/macos/InputoModules
+xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build
 ```

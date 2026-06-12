@@ -7,11 +7,11 @@ Copy this prompt into a new conversation when discussing Phase 4 Web composer en
 
 请先阅读：
 - README.md
-- Docs/ARCHITECTURE.md
-- Docs/DEVELOPMENT.md
-- Docs/HANDOVER.md
-- Docs/WEB_COMPOSER.md
-- Docs/HANDOVER_WEB_UI_DISCUSSION.md
+- docs/ARCHITECTURE.md
+- docs/DEVELOPMENT.md
+- docs/HANDOVER.md
+- docs/WEB_COMPOSER.md
+- docs/HANDOVER_WEB_UI_DISCUSSION.md
 
 项目背景：
 Inputo 是一个 macOS 原生、类似 Spotlight 的系统级 AI 输入源。用户通过自定义快捷键或菜单栏唤起，在 Inputo 内输入/粘贴文本，用 OpenAI-compatible provider 做文本转换，只有用户点击 Copy 时才写入剪贴板，然后通过 app anchors 跳回目标应用。
@@ -27,7 +27,7 @@ v1 隐私边界：
 
 当前实现状态：
 - Xcode `Inputo` app target 保持很薄，只做 lifecycle/menu/window hosting。
-- 产品代码在 `InputoModules` local SwiftPM package。
+- 产品代码在 `apps/macos/InputoModules` local SwiftPM package。
 - `InputoCore` 是 Foundation-only，包含 provider config、recipes、OpenAI-compatible request/response/prompt 逻辑。
 - `InputoMacPlatform` 负责 macOS services：Keychain、clipboard、hotkey、settings、app anchors。
 - `InputoComposerFeature` 负责当前 Web composer host/assets、native settings UI 和 feature orchestration。
@@ -36,28 +36,28 @@ v1 隐私边界：
 - Settings 里有 neutral connection test，不再用翻译作为连通性测试。
 - 当前 composer 是 native shell + bundled `WKWebView` body：native 保留 header、Jump anchors、Settings、panel behavior 和 platform services；Web body 渲染 preview、preset/instruction、input、actions。
 - Phase 3 使用 checked-in static HTML/CSS/JS，不使用 React、TypeScript、Vite、Node build step 或远程资源。
-- Phase 3 已完成 minimal WKWebView host 和关键人工 QA；Phase 4 的目标是引入 React + TypeScript + Vite 作为 Web composer 的 source workspace。
+- Phase 4 已引入 React + TypeScript + Vite source workspace，位置是 `packages/web-composer`；app runtime 仍加载 checked-in bundled local static assets。
 - Web-to-native 只通过 `InputoNativeBridgeHost` / `InputoNativeBridgeMessageHandling`；native-to-Web events 通过 `InputoBridgeEventEmitter`。
 - Web 侧使用 non-persistent data store、bundled local static assets、restrictive CSP，并由 WK host 阻止 `http`/`https` 资源加载。
 
 架构规则：
-- 保持 Xcode app + local SwiftPM package 结构。
+- 保持当前 monorepo 结构。
 - `Inputo` Xcode target 必须保持薄，只做 lifecycle/menu/window hosting。
-- 产品代码放在 `InputoModules`。
+- 产品代码放在 `apps/macos/InputoModules`。
 - `InputoCore` 保持 Foundation-only，方便未来用 Rust/C++ 重写 core 以便在 Windows 上复用。
 - `InputoMacPlatform` 负责 macOS services。
 - 不使用 CocoaPods、Carthage、XcodeGen 或 project generator。
 - 遵循最新 Apple SwiftUI/AppKit 应用规范。
 
 这次新对话的目标：
-我们要开始 Phase 4：把当前 minimal Web composer body 迁移到 React + TypeScript + Vite source workspace。不是全量改成 web，也不是移动 native settings / Jump anchors / platform services。当前方向仍是 native shell + web-rendered product surfaces：
+我们正在继续 Phase 4：React + TypeScript + Vite source workspace 已落在 `packages/web-composer`。不是全量改成 web，也不是移动 native settings / Jump anchors / platform services。当前方向仍是 native shell + web-rendered product surfaces：
 - native shell 继续负责菜单栏、快捷键、窗口、app anchors、Keychain、clipboard、sandbox/permissions。
 - Swift/Core/Platform 继续负责 provider、settings、privacy-sensitive services。
 - web UI 当前只渲染 composer body；settings 和 Jump anchors 仍保持 native。
 - React + TypeScript + Vite 只作为前端源码和本地开发工具；app runtime 仍加载 bundled local static assets，Xcode app target 仍保持薄且不依赖 dev server。
 
 请重点讨论：
-1. React + TypeScript + Vite workspace 应放在哪里，如何输出到现有 `Resources/WebComposer`。
+1. `packages/web-composer` 如何继续输出到现有 `Resources/WebComposer`。
 2. 如何保持 Xcode 离线 build：不在 Xcode target 中运行 `npm install`，不依赖 dev server，不下载远程资源。
 3. Web UI 边界：Phase 4 继续只做 composer，settings 和 Jump anchors 仍保持 native。
 4. Swift-to-web bridge 的命令、事件、DTO、错误处理、测试策略如何继续收窄。
@@ -69,8 +69,8 @@ v1 隐私边界：
 请先给出架构分析和可选方案，不要直接改代码，除非我明确要求开始实现。
 
 如果后续进入实现阶段，每次改动后必须验证：
-`swift test --package-path InputoModules`
-`xcodebuild -project Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build`
+`swift test --package-path apps/macos/InputoModules`
+`xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build`
 ```
 
 ## Discussion Bias

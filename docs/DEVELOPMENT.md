@@ -37,13 +37,14 @@ Phase 1 has started with the smallest stable contract surface:
 - `AppState.nativeExecutorSnapshot(agentMode:)` separates capability state from SwiftUI presentation enough for a future bridge host to read state without importing SwiftUI.
 - Tests cover contract encoding, conservative tool policy, provider-error mapping, snapshot privacy, bridge dispatch, bridge error envelopes, user-action policy, request-id cancellation, event emission, streaming delta coalescing, and grant-based file tools.
 - Phase 3 now has a minimal `WKWebView` composer body host in `InputoComposerFeature` that loads bundled static assets, uses a non-persistent data store, restricts navigation to the asset bundle, routes Web-to-native messages through `InputoNativeBridgeHost`, and forwards native events through `InputoBridgeEventEmitter`.
-- `Docs/WEB_COMPOSER.md` records the current Web composer implementation, React/Vite source workspace, security boundary, packaging decision, and Phase 4 status.
-- Phase 4 has an initial React + TypeScript + Vite `WebComposer` workspace that regenerates the bundled Web composer assets while keeping Xcode builds independent of Node. Web agent planner work remains intentionally unstarted.
+- `docs/WEB_COMPOSER.md` records the current Web composer implementation, React/Vite source workspace, security boundary, packaging decision, and Phase 4 status.
+- Phase 4 has an initial React + TypeScript + Vite `packages/web-composer` workspace that regenerates the bundled Web composer assets while keeping Xcode builds independent of Node. Web agent planner work remains intentionally unstarted.
+- The repository now uses the target monorepo layout: `apps/macos`, `apps/windows`, `packages/web-composer`, `packages/bridge-contracts-ts`, `contracts`, `docs`, and `tools`.
 
 ## Development Principles
 
 - Keep `Inputo` as a thin Xcode app target for lifecycle, menu-bar integration, and AppKit window hosting.
-- Put product behavior in local SwiftPM modules under `InputoModules`.
+- Put macOS product behavior in local SwiftPM modules under `apps/macos/InputoModules`.
 - Keep `InputoCore` pure Foundation and Codable/Sendable-friendly so it can later be mirrored or replaced by a Rust/C++ core.
 - Keep OS APIs behind platform services in `InputoMacPlatform`.
 - Prefer small feature targets over growing the app target when new product areas appear.
@@ -70,11 +71,11 @@ Phase 1 has started with the smallest stable contract surface:
    - Add more explicit permission/status indicators for shortcut and app-anchor behavior.
 
 4. Continue Phase 4 Web composer engineering.
-   - Keep the React + TypeScript + Vite `WebComposer` source workspace aligned with the existing Web composer body.
-   - Treat the repository as a gradual monorepo: keep current macOS paths stable, add a top-level Web composer workspace, and defer broader `apps/`/`packages/` reshuffling until Windows work has real shape.
+   - Keep the React + TypeScript + Vite `packages/web-composer` source workspace aligned with the existing Web composer body.
+   - Keep the current monorepo layout stable and avoid further directory churn unless a new package or app boundary requires it.
    - Keep the production output as bundled local static assets loaded by the current `WKWebView` host.
    - Keep Xcode app builds independent of `npm install`, network access, or frontend dev servers.
-   - Use `npm run verify` in `WebComposer` to typecheck, test, regenerate, and confirm bundled asset consistency when changing the Web source.
+   - Use `npm run verify` in `packages/web-composer` to typecheck, test, regenerate, and confirm bundled asset consistency when changing the Web source.
    - Keep Web-to-native calls behind `InputoNativeBridgeHost` / `InputoNativeBridgeMessageHandling`.
    - Keep native-to-Web events behind `InputoBridgeEventEmitter`.
    - Port the accepted Phase 3 focus, IME, Escape, keyboard shortcut, dark-mode, streaming, and visual behavior without expanding Web privileges.
@@ -91,7 +92,7 @@ Phase 1 has started with the smallest stable contract surface:
 - Add `InputoSettingsFeature` if settings grows beyond a small view.
 - Add `InputoProviderFeature` if provider configuration becomes multi-provider.
 - Add `InputoToolsFeature` only after v1 text workflows are stable.
-- Add contract examples under `Contracts/examples`.
+- Add contract examples under `contracts/examples`.
 - Add JSON schema validation tests for shared contracts.
 - Add macOS UI smoke tests for launch, show composer, open settings, and copy flow.
 - Add manual QA checklist for multi-display and full-screen spaces.
@@ -119,17 +120,17 @@ Phase 1 has started with the smallest stable contract surface:
 Run these before handing off meaningful changes:
 
 ```bash
-cd WebComposer && npm run verify && cd ..
-swift test --package-path InputoModules
-xcodebuild -project Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build
+cd packages/web-composer && npm run verify && cd ..
+swift test --package-path apps/macos/InputoModules
+xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build
 ```
 
 ## Continuous Integration
 
 GitHub Actions runs the same verification split by responsibility:
 
-- `web-composer`: installs `WebComposer` dependencies with `npm ci` and runs `npm run verify`.
-- `macos`: runs `swift test --package-path InputoModules` and the Xcode Debug build.
+- `web-composer`: installs `packages/web-composer` dependencies with `npm ci` and runs `npm run verify`.
+- `macos`: runs `swift test --package-path apps/macos/InputoModules` and the Xcode Debug build.
 
 The CI split preserves the local build policy: Xcode and SwiftPM do not run Node during normal macOS builds, while pull requests still verify that checked-in bundled Web assets match the React/Vite source.
 

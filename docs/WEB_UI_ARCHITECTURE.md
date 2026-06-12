@@ -53,7 +53,7 @@ Native shell responsibilities:
 - clipboard writes
 - macOS sandbox entitlements and OS permissions
 
-The Xcode `Inputo` app target should remain thin. Product behavior still belongs in `InputoModules`.
+The Xcode `Inputo` app target should remain thin. Product behavior still belongs in `apps/macos/InputoModules`.
 
 ### Native Executor
 
@@ -550,15 +550,15 @@ Later packaging, if a framework is introduced:
 
 The recommended repository model is a monorepo containing the SwiftUI macOS app, the shared Web composer/agent source, shared contracts, and the future WinUI app. This keeps bridge contract changes, Web asset generation, platform host updates, and documentation in one reviewable product change.
 
-The first Phase 4 step should be additive rather than a directory reshuffle:
+The repository has been reorganized into the target monorepo shape:
 
-- keep the existing macOS paths stable
-- add a top-level `WebComposer` workspace for React, TypeScript, and Vite source
-- continue outputting production assets into the existing SwiftPM `Resources/WebComposer` bundle directory
-- keep `Contracts` as the shared source for language-neutral schemas and examples
-- add `Windows` only when the WinUI shell starts
-
-A later cleanup may move to `apps/macos`, `apps/windows`, `packages/web-composer`, `packages/bridge-contracts-ts`, `contracts`, and `tools`. That reorganization should happen after the Web workspace and Windows shell have real shape, not during the first React migration.
+- `apps/macos` contains the current SwiftUI/AppKit shell and local SwiftPM package.
+- `apps/windows` is reserved for the future WinUI/WebView2 shell.
+- `packages/web-composer` contains the React, TypeScript, and Vite source workspace.
+- `packages/bridge-contracts-ts` is reserved for future TypeScript bridge contract helpers.
+- `contracts` remains the shared source for language-neutral schemas and examples.
+- `docs` contains architecture, development, and handover notes.
+- `tools` is reserved for repository automation scripts.
 
 Monorepo does not mean one coupled build graph. The macOS app must keep building without Node, dependency installation, network access, or a frontend dev server. Frontend builds should be explicit commands that regenerate checked-in bundled assets, and CI can verify that generated assets match the source.
 
@@ -710,7 +710,7 @@ Initial landing:
 - `llm.stream` uses OpenAI-compatible server-sent event streaming through `AIProviderClient.streamTransform`.
 - `InputoNativeBridgeMessageHandling` and `InputoNativeBridgeHost` are the host-facing boundary used by the WKWebView adapter.
 - Unsupported versions, unknown tools, deferred network fetch, and policy violations return display-safe error envelopes.
-- Request fixtures live in `Contracts/examples/bridge-readonly-tool-calls.v1.json` and `Contracts/examples/bridge-side-effect-tool-calls.v1.json`.
+- Request fixtures live in `contracts/examples/bridge-readonly-tool-calls.v1.json` and `contracts/examples/bridge-side-effect-tool-calls.v1.json`.
 - Event emission, request-id cancellation, and streaming delta coalescing are covered by package tests.
 - `network.fetch`, connector tools, and MCP tools remain disabled until their manifest, review, credential, cancellation, and audit policies exist.
 
@@ -733,7 +733,7 @@ The first web UI should be intentionally small and use the existing native execu
 Initial landing:
 
 - `InputoComposerFeature` now contains the minimal `WKWebView` host and checked-in static composer assets.
-- `Docs/WEB_COMPOSER.md` documents the current implementation details, Phase 3 manual QA coverage, and Phase 4 direction.
+- `docs/WEB_COMPOSER.md` documents the current implementation details, Phase 3 manual QA coverage, and Phase 4 direction.
 - The app target remains thin; `ComposerView` hosts the Web composer body directly below the native header and Jump anchors.
 - Static assets are copied by SwiftPM resources; there is no React, Vite, Node, or remote asset dependency.
 - The web asset CSP blocks direct browser network access with `connect-src 'none'`.
@@ -764,8 +764,8 @@ Tasks:
 
 Initial landing:
 
-- `WebComposer` contains the React, TypeScript, and Vite source workspace for the composer body.
-- Vite builds deterministic `index.html`, `composer.css`, and `composer.js` files into `InputoModules/Sources/InputoComposerFeature/Resources/WebComposer`.
+- `packages/web-composer` contains the React, TypeScript, and Vite source workspace for the composer body.
+- Vite builds deterministic `index.html`, `composer.css`, and `composer.js` files into `apps/macos/InputoModules/Sources/InputoComposerFeature/Resources/WebComposer`.
 - The typed TypeScript bridge client only posts allowlisted `tool.call` envelopes to the existing native `inputoNative` message handler.
 - React state mirrors the Phase 3 composer behavior, including snapshot loading, debounced draft/instruction sync, recipe selection, streaming deltas, cancellation, Clear, Copy, IME-aware Escape handling, Command-Return generation, focus handoff, and native theme updates.
 - Frontend tests cover bridge request/response routing, safe missing-bridge errors, native event routing, snapshot merging, and streaming state transitions.
@@ -774,7 +774,7 @@ Initial landing:
 Exit criteria:
 
 - the app continues to load bundled local static assets through the existing `WKWebView` host
-- `swift test --package-path InputoModules` and the Xcode Debug build pass without running `npm install` or downloading dependencies
+- `swift test --package-path apps/macos/InputoModules` and the Xcode Debug build pass without running `npm install` or downloading dependencies
 - the React/Vite production build can regenerate the bundled assets deterministically
 - the Web composer behavior matches the accepted Phase 3 composer body
 - native shell ownership remains intact
@@ -815,7 +815,7 @@ Privileged tools should remain harder to add than pure Web tools. That is intent
 ## Open Questions
 
 - Should the first web composer be hidden behind a compile-time flag, debug setting, or user setting?
-- Should bridge DTOs live in the existing `Contracts` schema or a new `Contracts/inputo.bridge.v1.schema.json`?
+- Should bridge DTOs live in the existing `contracts` schema or a new `contracts/inputo.bridge.v1.schema.json`?
 - How much prompt assembly belongs in the web planner versus native/core?
 - What exact UI should disclose Mode 3 live sending?
 - What is the smallest useful manifest-defined network tool?

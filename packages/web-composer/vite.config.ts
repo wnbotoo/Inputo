@@ -9,7 +9,7 @@ export default defineConfig({
     modulePreload: {
       polyfill: false
     },
-    outDir: resolve(__dirname, "../InputoModules/Sources/InputoComposerFeature/Resources/WebComposer"),
+    outDir: resolve(__dirname, "../../apps/macos/InputoModules/Sources/InputoComposerFeature/Resources/WebComposer"),
     emptyOutDir: true,
     cssCodeSplit: false,
     rollupOptions: {

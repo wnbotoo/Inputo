@@ -43,36 +43,34 @@ Open questions for the hybrid design discussion:
 
 Inputo uses Swift Package Manager as the module and dependency-management baseline. Do not introduce CocoaPods, Carthage, XcodeGen, or other project generators unless the project owner explicitly changes this policy.
 
-The Xcode project owns only the thin macOS app target. Product code lives in the local Swift package at `InputoModules`, which Xcode consumes through local package products. Keep package tests and the Xcode app build working for every change.
+The Xcode project owns only the thin macOS app target. Product code lives in the local Swift package at `apps/macos/InputoModules`, which Xcode consumes through local package products. Keep package tests and the Xcode app build working for every change.
 
 Future macOS code should follow current Apple platform conventions: SwiftUI for declarative app UI, AppKit only for macOS system integration that SwiftUI does not cover, structured concurrency for asynchronous work, actor isolation for UI state, and platform credential stores for secrets.
 
 ## Project Layout
 
-- `Inputo.xcodeproj`: thin macOS app target, app bundle settings, signing, Info.plist generation, and local package product links.
-- `Inputo/App`: app lifecycle and shell code only: `InputoApp`, `AppDelegate`, floating/settings window controllers, and menu bar controller.
-- `InputoModules`: local Swift package for core, platform, and feature modules.
-- `Contracts`: language-neutral schemas for concepts that future Windows and native-core implementations must preserve.
+- `apps/macos/Inputo.xcodeproj`: thin macOS app target, app bundle settings, signing, Info.plist generation, and local package product links.
+- `apps/macos/Inputo/App`: app lifecycle and shell code only: `InputoApp`, `AppDelegate`, floating/settings window controllers, and menu bar controller.
+- `apps/macos/InputoModules`: local Swift package for core, platform, and feature modules used by the macOS app.
+- `packages/web-composer`: React, TypeScript, and Vite source workspace that regenerates the bundled Web composer assets.
+- `packages/bridge-contracts-ts`: placeholder for future TypeScript bridge contract helpers.
+- `apps/windows`: placeholder for the future WinUI/WebView2 shell.
+- `contracts`: language-neutral schemas for concepts that future Windows and native-core implementations must preserve.
+- `docs`: architecture, development, and handover notes.
+- `tools`: placeholder for repository automation scripts.
 
 ## Repository Direction
 
-Inputo should remain a monorepo as the product grows to include the SwiftUI macOS app, the shared Web composer/agent surface, and the future WinUI app. These parts are one product with shared contracts and privacy boundaries, not three unrelated applications.
+Inputo is organized as a monorepo for the SwiftUI macOS app, the shared Web composer/agent surface, shared contracts, and the future WinUI app. These parts are one product with shared contracts and privacy boundaries, not three unrelated applications.
 
-The preferred near-term layout is evolutionary:
+The current layout is:
 
-- keep the current macOS app and `InputoModules` paths stable while Phase 4 lands
-- add a dedicated `WebComposer` workspace for the React, TypeScript, and Vite source
-- add a future `Windows` directory when WinUI work begins
-- keep `Contracts` as the shared language-neutral boundary across Swift, TypeScript, and future C#
-- keep docs and verification guidance in the same repository so platform behavior stays aligned
-
-If the repository is reorganized later, a more standard shape is acceptable:
-
-- `apps/macos` for the SwiftUI/AppKit shell
-- `apps/windows` for the WinUI/WebView2 shell
+- `apps/macos` for the SwiftUI/AppKit shell and its local SwiftPM package
+- `apps/windows` for the future WinUI/WebView2 shell
 - `packages/web-composer` for the shared React surface
 - `packages/bridge-contracts-ts` for TypeScript bridge types if it becomes useful
 - `contracts` for language-neutral schemas, examples, and compatibility fixtures
+- `docs` for architecture, development, and handover notes
 - `tools` for build, sync, and verification scripts
 
 Do not treat this as permission to tightly couple the builds. The macOS Xcode build and Swift package tests must keep working from checked-in sources without `npm install`, network access, or a frontend dev server. The Web workspace can regenerate bundled assets through an explicit developer or CI command, but Xcode should not require Node as part of its normal build.
@@ -114,7 +112,7 @@ Responsibilities that should stay platform-native:
 - app/window enumeration and activation
 - OS permission prompts and privacy-state reporting
 
-If a native core is introduced later, expose it through a small C ABI or generated bindings and keep `InputoMacPlatform` and the future Windows platform layer as adapters. Swift and C# should call the core through explicit DTOs that match `Contracts/inputo.v1.schema.json`.
+If a native core is introduced later, expose it through a small C ABI or generated bindings and keep `InputoMacPlatform` and the future Windows platform layer as adapters. Swift and C# should call the core through explicit DTOs that match `contracts/inputo.v1.schema.json`.
 
 ## Privacy Defaults
 

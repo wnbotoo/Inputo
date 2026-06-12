@@ -2,14 +2,14 @@
 
 This document records the Phase 0 and Phase 1 landing work for the planned web planner plus native executor architecture.
 
-Inputo now has a minimal bundled `WKWebView` composer body. React and Vite remain unstarted. The current goal is to keep the native capability boundary explicit and testable while Web renders only the composer body.
+Inputo now has a bundled `WKWebView` composer body generated from the React + TypeScript + Vite source workspace in `packages/web-composer`. The current goal is to keep the native capability boundary explicit and testable while Web renders only the composer body.
 
 ## Phase 0 Status
 
 The native v0.1 loop remains the baseline:
 
 - The Xcode `Inputo` app target stays thin and owns only app lifecycle, menu bar wiring, window hosting, hotkey registration, and panel activation.
-- Product behavior lives in `InputoModules`.
+- Product behavior lives in `apps/macos/InputoModules`.
 - `InputoCore` remains Foundation-only.
 - `InputoMacPlatform` owns macOS services: Keychain, clipboard, hotkey, settings, and app anchors.
 - `InputoComposerFeature.AppState` remains the native feature composition root and uses injectable service protocols with fake test services.
@@ -139,7 +139,7 @@ Phase 2 proves the contract without building the final Web UI:
 - supports cancellation by request id
 - keeps provider and tool errors display-safe
 - coalesces streaming deltas before event emission
-- includes JSON fixture examples under `Contracts/examples`
+- includes JSON fixture examples under `contracts/examples`
 
 The minimal `WKWebView` host now exists and has completed the critical Phase 3 manual QA path. React/Vite source tooling belongs to Phase 4.
 
@@ -173,8 +173,8 @@ The dispatcher still does not host Web UI. It does not expose arbitrary native A
 
 Fixtures live in:
 
-- `Contracts/examples/bridge-readonly-tool-calls.v1.json`
-- `Contracts/examples/bridge-side-effect-tool-calls.v1.json`
+- `contracts/examples/bridge-readonly-tool-calls.v1.json`
+- `contracts/examples/bridge-side-effect-tool-calls.v1.json`
 
 ## Placeholder Implementation Expectations
 
@@ -200,5 +200,5 @@ The native side now has the first minimal WKWebView host slice:
 - Remote Web content is blocked with both bundled-asset navigation policy and a `WKContentRuleList` for `http`/`https` URLs.
 - Native forwards the current system color scheme into Web so the composer can render light and dark themes explicitly.
 - Settings and Jump anchors remain native.
-- React and Vite are the next Phase 4 frontend-source tooling step. The Web agent planner remains deferred.
-- Current Web composer implementation details live in `Docs/WEB_COMPOSER.md`.
+- React and Vite source tooling now lives in `packages/web-composer`. The Web agent planner remains deferred.
+- Current Web composer implementation details live in `docs/WEB_COMPOSER.md`.

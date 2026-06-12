@@ -6,9 +6,11 @@ import { fileURLToPath } from "node:url";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const workspaceDir = resolve(scriptDir, "..");
-const repoRoot = resolve(workspaceDir, "..");
+const repoRoot = resolve(workspaceDir, "../..");
 const bundledAssetsDir = join(
   repoRoot,
+  "apps",
+  "macos",
   "InputoModules",
   "Sources",
   "InputoComposerFeature",
@@ -70,7 +72,7 @@ if (mismatches.length > 0) {
     console.error(`- ${mismatch}`);
   }
   console.error("");
-  console.error("Run `npm run build` in WebComposer and commit the regenerated assets.");
+  console.error("Run `npm run build` in packages/web-composer and commit the regenerated assets.");
   console.error(`Generated comparison output was left at ${generatedDir}`);
   process.exit(1);
 }
