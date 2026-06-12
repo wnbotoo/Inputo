@@ -72,6 +72,8 @@ npm run check:assets
 `npm run build` regenerates the production assets in `InputoModules/Sources/InputoComposerFeature/Resources/WebComposer`.
 `npm run check:assets` builds into a temporary directory and verifies that the generated files match the checked-in bundled assets without modifying the repository.
 
+CI should run `npm ci` and `npm run verify` from `WebComposer`. The macOS Xcode build should continue to consume checked-in static assets only.
+
 ## Bridge Boundary
 
 Web-to-native messages must go through:

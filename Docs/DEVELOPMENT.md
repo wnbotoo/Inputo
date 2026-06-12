@@ -124,6 +124,15 @@ swift test --package-path InputoModules
 xcodebuild -project Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build
 ```
 
+## Continuous Integration
+
+GitHub Actions runs the same verification split by responsibility:
+
+- `web-composer`: installs `WebComposer` dependencies with `npm ci` and runs `npm run verify`.
+- `macos`: runs `swift test --package-path InputoModules` and the Xcode Debug build.
+
+The CI split preserves the local build policy: Xcode and SwiftPM do not run Node during normal macOS builds, while pull requests still verify that checked-in bundled Web assets match the React/Vite source.
+
 ## Manual QA Checklist
 
 - Launch Inputo from Xcode.
