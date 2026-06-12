@@ -15,38 +15,14 @@ public struct AIProviderClient: Sendable {
         apiKey: String
     ) async throws -> String {
         let validatedConfig = try config.validated()
-
-        var request = URLRequest(url: validatedConfig.chatCompletionsURL, timeoutInterval: validatedConfig.timeoutSeconds)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        for (key, value) in validatedConfig.headers {
-            request.setValue(value, forHTTPHeaderField: key)
-        }
-
-        let userMessage = """
-        Transform this input for the user.
-
-        Additional user instruction:
-        \(instruction.isEmpty ? "None." : instruction)
-
-        Input:
-        \(text)
-        """
-
-        let body = ChatCompletionRequest(
-            model: validatedConfig.model,
-            messages: [
-                .init(role: "system", content: """
-                \(recipe.systemPrompt)
-                \(recipe.outputHint)
-                Return only the final transformed text. Do not explain your changes.
-                """),
-                .init(role: "user", content: userMessage)
-            ],
-            temperature: 0.4
+        let request = try makeChatCompletionsRequest(
+            text: text,
+            instruction: instruction,
+            recipe: recipe,
+            validatedConfig: validatedConfig,
+            apiKey: apiKey,
+            stream: false
         )
-        request.httpBody = try JSONEncoder().encode(body)
 
         let data: Data
         let response: URLResponse
@@ -77,6 +53,118 @@ public struct AIProviderClient: Sendable {
             throw AIProviderError.emptyOutput
         }
         return content
+    }
+
+    public func streamTransform(
+        text: String,
+        instruction: String,
+        recipe: TransformRecipe,
+        config: AIProviderConfig,
+        apiKey: String
+    ) async throws -> AsyncThrowingStream<String, Error> {
+        let validatedConfig = try config.validated()
+        let request = try makeChatCompletionsRequest(
+            text: text,
+            instruction: instruction,
+            recipe: recipe,
+            validatedConfig: validatedConfig,
+            apiKey: apiKey,
+            stream: true
+        )
+        let session = session
+
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    let (bytes, response) = try await session.bytes(for: request)
+                    guard let httpResponse = response as? HTTPURLResponse else {
+                        throw AIProviderError.invalidResponse
+                    }
+                    guard (200..<300).contains(httpResponse.statusCode) else {
+                        let body = try await collectData(from: bytes)
+                        if let error = try? JSONDecoder().decode(OpenAIErrorResponse.self, from: body) {
+                            throw AIProviderError.provider(
+                                redactSensitiveValues(
+                                    in: error.error.message,
+                                    apiKey: apiKey,
+                                    headers: validatedConfig.headers
+                                )
+                            )
+                        }
+                        throw AIProviderError.httpStatus(httpResponse.statusCode)
+                    }
+
+                    var emittedOutput = false
+                    for try await line in bytes.lines {
+                        try Task.checkCancellation()
+                        guard let chunk = try parseStreamingLine(line) else { continue }
+                        if chunk.isDone { break }
+                        if let text = chunk.text, !text.isEmpty {
+                            emittedOutput = true
+                            continuation.yield(text)
+                        }
+                    }
+
+                    if !emittedOutput {
+                        throw AIProviderError.emptyOutput
+                    }
+                    continuation.finish()
+                } catch is CancellationError {
+                    continuation.finish(throwing: CancellationError())
+                } catch let error as URLError {
+                    continuation.finish(throwing: mapURLError(error, endpoint: validatedConfig.chatCompletionsURL))
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
+        }
+    }
+
+    private func makeChatCompletionsRequest(
+        text: String,
+        instruction: String,
+        recipe: TransformRecipe,
+        validatedConfig: ValidatedAIProviderConfig,
+        apiKey: String,
+        stream: Bool
+    ) throws -> URLRequest {
+        var request = URLRequest(url: validatedConfig.chatCompletionsURL, timeoutInterval: validatedConfig.timeoutSeconds)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        for (key, value) in validatedConfig.headers {
+            request.setValue(value, forHTTPHeaderField: key)
+        }
+
+        let userMessage = """
+        Transform this input for the user.
+
+        Additional user instruction:
+        \(instruction.isEmpty ? "None." : instruction)
+
+        Input:
+        \(text)
+        """
+
+        let body = ChatCompletionRequest(
+            model: validatedConfig.model,
+            messages: [
+                .init(role: "system", content: """
+                \(recipe.systemPrompt)
+                \(recipe.outputHint)
+                Return only the final transformed text. Do not explain your changes.
+                """),
+                .init(role: "user", content: userMessage)
+            ],
+            temperature: 0.4,
+            stream: stream ? true : nil
+        )
+        request.httpBody = try JSONEncoder().encode(body)
+        return request
     }
 }
 
@@ -157,10 +245,38 @@ private func isSensitiveHeaderName(_ name: String) -> Bool {
         lowercased.contains("key")
 }
 
+private func collectData(from bytes: URLSession.AsyncBytes) async throws -> Data {
+    var data = Data()
+    for try await byte in bytes {
+        data.append(byte)
+    }
+    return data
+}
+
+private struct StreamingLine {
+    var text: String?
+    var isDone: Bool
+}
+
+private func parseStreamingLine(_ line: String) throws -> StreamingLine? {
+    let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty, trimmed.hasPrefix("data:") else { return nil }
+
+    let payload = trimmed.dropFirst("data:".count).trimmingCharacters(in: .whitespaces)
+    if payload == "[DONE]" {
+        return StreamingLine(text: nil, isDone: true)
+    }
+
+    let data = Data(payload.utf8)
+    let chunk = try JSONDecoder().decode(ChatCompletionStreamChunk.self, from: data)
+    return StreamingLine(text: chunk.choices.first?.delta.content, isDone: false)
+}
+
 private struct ChatCompletionRequest: Encodable {
     let model: String
     let messages: [Message]
     let temperature: Double
+    let stream: Bool?
 
     struct Message: Encodable {
         let role: String
@@ -185,5 +301,17 @@ private struct OpenAIErrorResponse: Decodable {
 
     struct ErrorBody: Decodable {
         let message: String
+    }
+}
+
+private struct ChatCompletionStreamChunk: Decodable {
+    let choices: [Choice]
+
+    struct Choice: Decodable {
+        let delta: Delta
+    }
+
+    struct Delta: Decodable {
+        let content: String?
     }
 }

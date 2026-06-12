@@ -31,6 +31,8 @@ Phase 1 has started with the smallest stable contract surface:
 - Native tools are allowlisted and carry policy metadata: side-effect class, minimum agent mode, explicit-action requirement, per-call confirmation, cancellation support, and streaming support.
 - File tools are contract-only and grant-based: future reads/writes must go through native picker/save-panel grants rather than arbitrary Web-provided paths.
 - The JSON bridge dispatcher in `InputoComposerFeature` now executes the Phase 2A-D native executor tools: read-only snapshots, composer draft/recipe/clear, LLM chat/stream/cancel, clipboard copy, app anchors, settings open, permission status/request, and grant-based file picker/read/write.
+- `AIProviderClient.streamTransform` parses OpenAI-compatible SSE chunks, and `AppState.streamGenerate` updates native composer state incrementally for `llm.stream`.
+- `InputoNativeBridgeMessageHandling` and `InputoNativeBridgeHost` define the host-facing protocol that a future WKWebView adapter should call.
 - `network.fetch` remains explicitly policy-denied until manifest-governed network policy exists.
 - `AppState.nativeExecutorSnapshot(agentMode:)` separates capability state from SwiftUI presentation enough for a future bridge host to read state without importing SwiftUI.
 - Tests cover contract encoding, conservative tool policy, provider-error mapping, snapshot privacy, bridge dispatch, bridge error envelopes, user-action policy, request-id cancellation, event emission, streaming delta coalescing, and grant-based file tools.
@@ -68,9 +70,16 @@ Phase 1 has started with the smallest stable contract surface:
 4. Build the bridge host before adding frontend tooling.
    - Keep the native shell and service boundaries intact.
    - Keep expanding the JSON dispatcher only through allowlisted tools and DTOs.
-   - Add a real bridge host boundary around the dispatcher before embedding Web UI.
+   - Use the existing `InputoNativeBridgeMessageHandling` host boundary when embedding Web UI.
    - Keep `network.fetch`, connector tools, and MCP tools disabled until manifest/review/audit policy exists.
    - Do not start React/Vite or a WKWebView surface until the dispatcher is proven.
+
+5. Add the minimal WKWebView host as the next architecture slice.
+   - Keep the native SwiftUI composer available as fallback.
+   - Load only bundled local assets.
+   - Route Web-to-native JSON through `InputoNativeBridgeHost`.
+   - Route native events back to Web through the host adapter.
+   - Verify focus, IME, Escape, keyboard shortcuts, dark mode, and panel sizing before moving composer UI to Web.
 
 ## Backlog
 

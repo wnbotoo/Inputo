@@ -688,6 +688,8 @@ Initial landing:
 - `InputoComposerFeature/Bridge/InputoNativeBridgeDispatcher.swift` accepts versioned `tool.call` JSON envelopes and returns `tool.result` envelopes.
 - The dispatcher now executes Phase 2A-D native executor tools: read-only snapshots, composer draft/recipe/clear, LLM chat/stream/cancel, clipboard copy, app anchors, settings open, permission status/request, and grant-based file picker/read/write.
 - Side-effecting tools require policy context such as explicit user action and, where needed, per-call confirmation.
+- `llm.stream` uses OpenAI-compatible server-sent event streaming through `AIProviderClient.streamTransform`.
+- `InputoNativeBridgeMessageHandling` and `InputoNativeBridgeHost` are the host-facing boundary that a future WKWebView adapter should call.
 - Unsupported versions, unknown tools, deferred network fetch, and policy violations return display-safe error envelopes.
 - Request fixtures live in `Contracts/examples/bridge-readonly-tool-calls.v1.json` and `Contracts/examples/bridge-side-effect-tool-calls.v1.json`.
 - Event emission, request-id cancellation, and streaming delta coalescing are covered by package tests.
@@ -702,7 +704,8 @@ Tasks:
 - add a small `WKWebView` composer body behind a debug flag or internal setting
 - load only bundled local assets
 - configure restrictive navigation and data-store behavior
-- connect the bridge host
+- connect Web messages to `InputoNativeBridgeHost`
+- deliver `InputoBridgeEventEmitter` events back into Web
 - verify focus, IME, Escape, keyboard shortcuts, dark mode, and panel sizing
 - keep Jump anchors native
 

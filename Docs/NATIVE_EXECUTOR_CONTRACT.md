@@ -158,6 +158,8 @@ The dispatcher now lives in `InputoComposerFeature`:
 - implements `permissions.request` as a policy-checked status response; v1 does not request new screen-recording or accessibility permissions
 - implements grant-based file tools through `InputoMacPlatform.FileGrantService`
 - emits `llm.started`, `llm.delta`, `llm.completed`, `llm.failed`, and `llm.cancelled` events
+- uses true OpenAI-compatible SSE provider streaming for `llm.stream`
+- exposes `InputoNativeBridgeMessageHandling` and `InputoNativeBridgeHost` as the host-facing boundary for a future WKWebView adapter
 - rejects unsupported bridge versions
 - rejects unknown tools
 - rejects policy violations with display-safe errors
@@ -176,6 +178,16 @@ Placeholder contracts should be implemented in dependency order, not by starting
 
 1. Phase 2A: implement the JSON bridge dispatcher, `tools.list`, `composer.getState`, `settings.summary`, and `permissions.status`. Done.
 2. Phase 2B: wire existing native `AppState` actions as tools: composer draft/recipe/clear, `llm.chat`, `llm.cancel`, `clipboard.copyGeneratedOutput`, `appAnchors.list`, `appAnchors.activate`, and `settings.open`. Done.
-3. Phase 2C: add event emission, request-id cancellation, streaming delta coalescing, and `llm.stream`. Done. Current provider calls still return whole completions, so `llm.stream` emits lifecycle events and a coalesced result delta until the provider client gains token streaming.
+3. Phase 2C: add event emission, request-id cancellation, streaming delta coalescing, and `llm.stream`. Done. `AIProviderClient.streamTransform` now parses OpenAI-compatible server-sent event chunks and `AppState.streamGenerate` updates authoritative composer output incrementally.
 4. Phase 2D: implement grant-based file picker/read/write tools after bridge policy and confirmation UI exist. Done at native executor level through `FileGrantService`; future Web UI still needs to render the confirmation surface before invoking these tools.
 5. Later agent phases: implement manifest-governed `network.fetch`, connector tools, and MCP tools only after their review, credential, cancellation, and audit policies exist. Not enabled; `network.fetch` is explicitly policy-denied.
+
+## Phase 3 Readiness
+
+The native side is ready for a minimal WKWebView host slice once the app chooses to begin Phase 3:
+
+- WebView code should call only `InputoNativeBridgeMessageHandling.receiveBridgeMessage`.
+- Native-to-Web events should be delivered from `InputoBridgeEventEmitter` through the host adapter.
+- The host should still load only bundled local assets and keep settings native.
+- The host must provide explicit user-action and confirmation context for side-effecting bridge calls.
+- React, Vite, and Web agent planner work remain deferred until after the minimal host proves bridge wiring, focus, IME, Escape handling, and panel sizing.

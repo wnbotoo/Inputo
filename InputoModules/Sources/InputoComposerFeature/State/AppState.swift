@@ -111,6 +111,64 @@ public final class AppState: ObservableObject {
         return task
     }
 
+    @discardableResult
+    public func streamGenerate(onDelta: @escaping @MainActor (String) -> Void) -> Task<Void, Never> {
+        let trimmedInput = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedInput.isEmpty else {
+            errorMessage = "Add text to transform first."
+            return Task { @MainActor in }
+        }
+
+        generationTask?.cancel()
+        let generationID = UUID()
+        activeGenerationID = generationID
+        isGenerating = true
+        outputText = ""
+        errorMessage = nil
+        statusMessage = nil
+
+        let task = Task { [weak self] in
+            guard let self else { return }
+            do {
+                _ = try settings.provider.validated()
+                let apiKey = try services.apiKeys.readAPIKey()
+                hasAPIKey = Self.hasUsableAPIKey(apiKey)
+                guard hasAPIKey else {
+                    throw AIProviderError.missingAPIKey
+                }
+
+                let stream = try await services.textTransformer.streamText(
+                    text: trimmedInput,
+                    instruction: instruction.trimmingCharacters(in: .whitespacesAndNewlines),
+                    recipe: selectedRecipe,
+                    config: settings.provider,
+                    apiKey: apiKey
+                )
+
+                var combinedOutput = ""
+                for try await delta in stream {
+                    guard !Task.isCancelled, activeGenerationID == generationID else { return }
+                    combinedOutput += delta
+                    outputText = combinedOutput
+                    onDelta(delta)
+                }
+
+                guard !Task.isCancelled, activeGenerationID == generationID else { return }
+                guard !combinedOutput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    throw AIProviderError.emptyOutput
+                }
+                statusMessage = "Ready to copy."
+            } catch is CancellationError {
+            } catch {
+                guard !Task.isCancelled, activeGenerationID == generationID else { return }
+                errorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            }
+            finishGeneration(id: generationID)
+        }
+        generationTask = task
+        return task
+    }
+
     public func copyOutput() {
         let trimmedOutput = outputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedOutput.isEmpty else {

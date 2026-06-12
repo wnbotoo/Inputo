@@ -279,7 +279,14 @@ public final class InputoNativeBridgeDispatcher {
         }
 
         emit(event: .llmStarted, requestID: id, payload: InputoEmptyPayload())
-        let generationTask = appState.generate()
+        var coalescer = InputoStreamDeltaCoalescer()
+        let generationTask = streams
+            ? appState.streamGenerate { delta in
+                for streamDelta in coalescer.append(delta) {
+                    self.emit(event: .llmDelta, requestID: id, payload: streamDelta)
+                }
+            }
+            : appState.generate()
         await generationTask.value
 
         let snapshot = appState.nativeExecutorSnapshot(agentMode: agentMode).composer
@@ -295,7 +302,9 @@ public final class InputoNativeBridgeDispatcher {
         }
 
         if streams {
-            emitStreamDelta(output: snapshot.generatedOutput, requestID: id)
+            if let finalDelta = coalescer.flush(isFinal: true) {
+                emit(event: .llmDelta, requestID: id, payload: finalDelta)
+            }
         }
         emit(event: .llmCompleted, requestID: id, payload: InputoEmptyPayload())
         return success(
@@ -312,16 +321,6 @@ public final class InputoNativeBridgeDispatcher {
         appState.errorMessage = nil
         appState.statusMessage = nil
         return true
-    }
-
-    private func emitStreamDelta(output: String, requestID: String) {
-        var coalescer = InputoStreamDeltaCoalescer()
-        for delta in coalescer.append(output) {
-            emit(event: .llmDelta, requestID: requestID, payload: delta)
-        }
-        if let finalDelta = coalescer.flush(isFinal: true) {
-            emit(event: .llmDelta, requestID: requestID, payload: finalDelta)
-        }
     }
 
     private func handleLLMCancel(_ data: Data, id: String) -> Data {

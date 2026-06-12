@@ -36,6 +36,28 @@
   },
   {
     "version": 1,
+    "id": "stream-request",
+    "type": "tool.call",
+    "tool": "llm.stream",
+    "context": {
+      "userAction": true,
+      "confirmed": false
+    },
+    "payload": {
+      "draftText": "Text to transform",
+      "instruction": "Make it clearer.",
+      "recipeID": "polish"
+    }
+  },
+  {
+    "version": 1,
+    "id": "cancel-stream-request",
+    "type": "tool.cancel",
+    "requestID": "stream-request",
+    "reason": "User cancelled generation."
+  },
+  {
+    "version": 1,
     "id": "pick-readable-request",
     "type": "tool.call",
     "tool": "files.pickReadable",

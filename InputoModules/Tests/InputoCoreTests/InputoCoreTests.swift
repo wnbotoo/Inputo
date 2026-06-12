@@ -214,6 +214,51 @@ func providerClientSendsOpenAICompatibleRequestShape() async throws {
 }
 
 @Test
+func providerClientStreamsOpenAICompatibleChunks() async throws {
+    let host = "stream.provider.example"
+    let session = MockURLProtocol.makeSession(host: host) { request in
+        let response = try makeHTTPResponse(for: request, statusCode: 200)
+        let data = Data(
+            """
+            data: {"choices":[{"delta":{"content":"Hello"}}]}
+
+            data: {"choices":[{"delta":{"content":" stream"}}]}
+
+            data: [DONE]
+
+            """.utf8
+        )
+        return (response, data)
+    }
+    let client = AIProviderClient(session: session)
+    let config = AIProviderConfig(
+        baseURL: "https://\(host)",
+        model: "inputo-model",
+        timeoutSeconds: 25,
+        headers: [:]
+    )
+
+    let stream = try await client.streamTransform(
+        text: "Hello",
+        instruction: "",
+        recipe: TransformRecipe.builtIns[0],
+        config: config,
+        apiKey: "sk-test-secret"
+    )
+    var chunks: [String] = []
+    for try await chunk in stream {
+        chunks.append(chunk)
+    }
+
+    let request = try #require(MockURLProtocol.requests(for: host).first)
+    let body = try #require(bodyData(from: request))
+    let json = try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
+
+    #expect(chunks == ["Hello", " stream"])
+    #expect(json["stream"] as? Bool == true)
+}
+
+@Test
 func providerClientRedactsSensitiveValuesFromProviderErrors() async throws {
     let host = "redact.provider.example"
     let session = MockURLProtocol.makeSession(host: host) { request in

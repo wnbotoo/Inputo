@@ -34,6 +34,36 @@ public protocol TextTransforming {
         config: AIProviderConfig,
         apiKey: String
     ) async throws -> String
+
+    func streamText(
+        text: String,
+        instruction: String,
+        recipe: TransformRecipe,
+        config: AIProviderConfig,
+        apiKey: String
+    ) async throws -> AsyncThrowingStream<String, Error>
+}
+
+public extension TextTransforming {
+    func streamText(
+        text: String,
+        instruction: String,
+        recipe: TransformRecipe,
+        config: AIProviderConfig,
+        apiKey: String
+    ) async throws -> AsyncThrowingStream<String, Error> {
+        let result = try await transformText(
+            text: text,
+            instruction: instruction,
+            recipe: recipe,
+            config: config,
+            apiKey: apiKey
+        )
+        return AsyncThrowingStream { continuation in
+            continuation.yield(result)
+            continuation.finish()
+        }
+    }
 }
 
 public struct AppStateServices {
@@ -144,6 +174,22 @@ private struct LiveTextTransformer: TextTransforming {
         apiKey: String
     ) async throws -> String {
         try await client.transform(
+            text: text,
+            instruction: instruction,
+            recipe: recipe,
+            config: config,
+            apiKey: apiKey
+        )
+    }
+
+    func streamText(
+        text: String,
+        instruction: String,
+        recipe: TransformRecipe,
+        config: AIProviderConfig,
+        apiKey: String
+    ) async throws -> AsyncThrowingStream<String, Error> {
+        try await client.streamTransform(
             text: text,
             instruction: instruction,
             recipe: recipe,

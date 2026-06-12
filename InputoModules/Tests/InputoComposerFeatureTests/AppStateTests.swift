@@ -554,7 +554,10 @@ func bridgeDispatcherRunsLLMChatWithoutCopying() async throws {
 @MainActor
 @Test
 func bridgeDispatcherStreamsLLMEventsAndCoalescedDelta() async throws {
-    let harness = makeHarness(providerResult: .success("Generated stream output"))
+    let harness = makeHarness(
+        providerResult: .success("Generated stream output"),
+        providerStreamChunks: ["Generated ", "stream ", "output"]
+    )
     var events: [String] = []
     let emitter = InputoBridgeEventEmitter { data in
         events.append(String(decoding: data, as: UTF8.self))
@@ -578,6 +581,78 @@ func bridgeDispatcherStreamsLLMEventsAndCoalescedDelta() async throws {
     #expect(events.contains { $0.contains(#""event":"llm.started""#) })
     #expect(events.contains { $0.contains(#""event":"llm.delta""#) && $0.contains("Generated stream output") })
     #expect(events.contains { $0.contains(#""event":"llm.completed""#) })
+}
+
+@MainActor
+@Test
+func bridgeHostForwardsMessagesThroughHostBoundary() async throws {
+    let harness = makeHarness()
+    let dispatcher = InputoNativeBridgeDispatcher(appState: harness.state)
+    let host: any InputoNativeBridgeMessageHandling = InputoNativeBridgeHost(dispatcher: dispatcher)
+
+    let responseJSON = await host.receiveBridgeMessage(
+        try request(tool: .toolsList, id: "host-tools-request", payload: InputoEmptyPayload())
+    )
+    let response = try JSONDecoder().decode(
+        InputoBridgeToolResultEnvelope<[InputoNativeToolDescriptor]>.self,
+        from: Data(responseJSON.utf8)
+    )
+
+    #expect(response.id == "host-tools-request")
+    #expect(response.payload?.map(\.id) == InputoNativeToolDescriptor.v1DefaultTools.map(\.id))
+}
+
+@MainActor
+@Test
+func bridgeDispatcherRejectsMalformedPayloadDuplicateRequestIDAndMissingCancelTarget() async throws {
+    let provider = ControlledTextTransformer()
+    let state = AppState(
+        services: AppStateServices(
+            settings: FakeSettingsService(settings: .default),
+            apiKeys: FakeAPIKeyService(apiKey: "test-key"),
+            clipboard: FakeClipboardService(),
+            anchors: FakeAnchorService(),
+            textTransformer: provider
+        )
+    )
+    let dispatcher = InputoNativeBridgeDispatcher(appState: state)
+
+    let malformed = try await errorResponse(
+        """
+        {"version":1,"id":"bad-draft","type":"tool.call","tool":"composer.setDraft","payload":{}}
+        """,
+        dispatcher: dispatcher
+    )
+
+    let llmJSON = try request(
+        tool: .llmChat,
+        id: "duplicate-request",
+        context: .userInitiated,
+        payload: InputoLLMChatRequest(draftText: "Draft", instruction: "", recipeID: "polish")
+    )
+    let firstTask = Task { @MainActor in
+        await dispatcher.dispatch(llmJSON)
+    }
+    await provider.waitForRequest()
+    let duplicate = try await errorResponse(llmJSON, dispatcher: dispatcher)
+
+    let cancelMissing = InputoBridgeCancelEnvelope(
+        id: "cancel-missing",
+        requestID: "not-active",
+        reason: nil
+    )
+    let cancelMissingResponse = try JSONDecoder().decode(
+        InputoBridgeToolResultEnvelope<InputoToolCancelResponse>.self,
+        from: await dispatcher.dispatch(try JSONEncoder().encode(cancelMissing))
+    )
+
+    provider.complete(with: "Generated")
+    _ = await firstTask.value
+
+    #expect(malformed.error?.code == .invalidRequest)
+    #expect(malformed.error?.field == "payload")
+    #expect(duplicate.error?.code == .invalidRequest)
+    #expect(cancelMissingResponse.payload?.didCancel == false)
 }
 
 @MainActor
@@ -686,6 +761,30 @@ func bridgeDispatcherRunsGrantBasedFileToolsWithConfirmation() async throws {
     #expect(fileTools.writtenText == "Saved")
     #expect(writeJSON.contains("/Users/") == false)
     #expect(writeJSON.contains("path") == false)
+}
+
+@MainActor
+@Test
+func bridgeDispatcherPropagatesFileToolErrorsSafely() async throws {
+    let fileTools = FakeFileToolService()
+    let dispatcher = InputoNativeBridgeDispatcher(
+        appState: makeHarness().state,
+        agentMode: .assistedWorkflow,
+        fileTools: fileTools
+    )
+
+    let response = try await errorResponse(
+        try request(
+            tool: .filesReadText,
+            id: "bad-grant-request",
+            context: .confirmedUserAction,
+            payload: InputoFileReadTextRequest(grantID: "missing-grant")
+        ),
+        dispatcher: dispatcher
+    )
+
+    #expect(response.error?.code == .fileGrantInvalid)
+    #expect(response.error?.message == "Invalid read grant.")
 }
 
 @MainActor
@@ -842,13 +941,14 @@ private func request<Payload: Codable & Equatable & Sendable>(
 private func makeHarness(
     settings: AppSettings = .default,
     apiKey: String = "test-key",
-    providerResult: Result<String, Error> = .success("Generated")
+    providerResult: Result<String, Error> = .success("Generated"),
+    providerStreamChunks: [String]? = nil
 ) -> AppStateHarness {
     let settingsService = FakeSettingsService(settings: settings)
     let apiKeyService = FakeAPIKeyService(apiKey: apiKey)
     let clipboard = FakeClipboardService()
     let anchors = FakeAnchorService()
-    let provider = FakeTextTransformer(result: providerResult)
+    let provider = FakeTextTransformer(result: providerResult, streamChunks: providerStreamChunks)
     let state = AppState(
         services: AppStateServices(
             settings: settingsService,
@@ -1019,10 +1119,12 @@ private struct TransformRequest {
 @MainActor
 private final class FakeTextTransformer: TextTransforming {
     var result: Result<String, Error>
+    var streamChunks: [String]?
     private(set) var requests: [TransformRequest] = []
 
-    init(result: Result<String, Error>) {
+    init(result: Result<String, Error>, streamChunks: [String]? = nil) {
         self.result = result
+        self.streamChunks = streamChunks
     }
 
     func transformText(
@@ -1042,6 +1144,39 @@ private final class FakeTextTransformer: TextTransforming {
             )
         )
         return try result.get()
+    }
+
+    func streamText(
+        text: String,
+        instruction: String,
+        recipe: TransformRecipe,
+        config: AIProviderConfig,
+        apiKey: String
+    ) async throws -> AsyncThrowingStream<String, Error> {
+        requests.append(
+            TransformRequest(
+                text: text,
+                instruction: instruction,
+                recipe: recipe,
+                config: config,
+                apiKey: apiKey
+            )
+        )
+
+        if let streamChunks {
+            return AsyncThrowingStream { continuation in
+                for chunk in streamChunks {
+                    continuation.yield(chunk)
+                }
+                continuation.finish()
+            }
+        }
+
+        let output = try result.get()
+        return AsyncThrowingStream { continuation in
+            continuation.yield(output)
+            continuation.finish()
+        }
     }
 }
 
