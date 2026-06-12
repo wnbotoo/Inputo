@@ -1,96 +1,137 @@
-# Inputo Web Composer
+# Web Composer
 
-This document records the current Web composer body implementation and the boundary it must keep.
+The Inputo composer body is a bundled Web surface hosted inside the native macOS app. Source code lives in `packages/web-composer`; production assets are generated into the SwiftPM resource bundle and loaded by `WKWebView`.
 
-## Current Status
+## Runtime Shape
 
-The composer body is rendered by a bundled `WKWebView` surface. Phase 4 now uses React, TypeScript, and Vite as the source workspace for the Web composer body while preserving the Phase 3 native host and runtime security boundary.
+```mermaid
+flowchart LR
+  src["packages/web-composer/src\nReact + TypeScript"]
+  vite["Vite production build"]
+  assets["Resources/WebComposer\nindex.html composer.js composer.css"]
+  swiftpm["SwiftPM resource bundle"]
+  webview["WKWebView\nnon-persistent local file runtime"]
+  bridge["InputoNativeBridgeHost"]
+  native["AppState + native executor"]
 
-Native still owns:
+  src --> vite
+  vite --> assets
+  assets --> swiftpm
+  swiftpm --> webview
+  webview --> bridge
+  bridge --> native
+```
 
-- app lifecycle
-- menu bar and global hotkey
-- floating panel sizing, placement, focus, and Escape handling
-- native header
-- Settings entry and settings window
-- Jump anchors and app activation
-- Keychain, clipboard, provider network, file grants, and platform permissions
+The app runtime does not use a dev server, remote JavaScript, remote CSS, browser-side provider fetch, or browser storage. Xcode builds consume the checked-in generated assets.
 
-Web owns only the composer body presentation:
+## Source Layout
 
-- preview
-- recipe picker
-- instruction field
-- draft editor
-- Generate, Cancel, Clear, and Copy controls
-- status and error text
-- streaming output rendering
+```text
+packages/web-composer/
+  index.html
+  package.json
+  vite.config.ts
+  vitest.config.ts
+  scripts/check-generated-assets.mjs
+  src/
+    App.tsx
+    main.tsx
+    bridge/
+      bridgeClient.ts
+      types.ts
+    state/
+      composer.ts
+    styles/
+      composer.css
+    __tests__/
+```
 
-The Web body is the only composer body. The previous native SwiftUI composer body was removed after the Web host landed. If bundled Web assets are missing, native shows a small missing-assets error state instead of falling back to a parallel native composer UI.
+## Development
 
-## Files
-
-Swift host:
-
-- `apps/macos/InputoModules/Sources/InputoComposerFeature/UI/InputoWebComposerView.swift`
-- `apps/macos/InputoModules/Sources/InputoComposerFeature/Bridge/InputoWebComposerAssets.swift`
-- `apps/macos/InputoModules/Sources/InputoComposerFeature/UI/ComposerView.swift`
-
-Static assets:
-
-- `apps/macos/InputoModules/Sources/InputoComposerFeature/Resources/WebComposer/index.html`
-- `apps/macos/InputoModules/Sources/InputoComposerFeature/Resources/WebComposer/composer.css`
-- `apps/macos/InputoModules/Sources/InputoComposerFeature/Resources/WebComposer/composer.js`
-
-SwiftPM bundles the assets through `apps/macos/InputoModules/Package.swift`.
-
-Web source workspace:
-
-- `packages/web-composer/package.json`
-- `packages/web-composer/vite.config.ts`
-- `packages/web-composer/src/App.tsx`
-- `packages/web-composer/src/bridge`
-- `packages/web-composer/src/state`
-- `packages/web-composer/src/styles/composer.css`
-- `packages/web-composer/src/__tests__`
-
-## Packaging
-
-Phase 4 introduces React + TypeScript + Vite as source tooling for the Web composer. The app runtime still uses checked-in static HTML, CSS, and JavaScript assets loaded from the SwiftPM resource bundle.
-
-Xcode and SwiftPM builds must remain independent of Node, `npm install`, network access, and frontend dev servers. Frontend builds are explicit developer or CI commands:
+Install dependencies:
 
 ```bash
 cd packages/web-composer
 npm install
-npm run typecheck
+```
+
+Run the browser dev server:
+
+```bash
+npm run dev
+```
+
+The dev server is for fast React iteration only. In that environment the native bridge is unavailable, so bridge calls return safe internal errors. Use it to work on layout, reducer behavior, theme styling, and basic UI states. Use the macOS app for real bridge and provider behavior.
+
+Run frontend tests:
+
+```bash
 npm test
+```
+
+Typecheck:
+
+```bash
+npm run typecheck
+```
+
+Full Web verification:
+
+```bash
+npm run verify
+```
+
+## Building for the App
+
+Generate production assets:
+
+```bash
+cd packages/web-composer
+npm run build
+```
+
+Output path:
+
+```text
+../../apps/macos/InputoModules/Sources/InputoComposerFeature/Resources/WebComposer
+```
+
+Generated files:
+
+- `index.html`
+- `composer.js`
+- `composer.css`
+
+The production `index.html` intentionally uses a classic script tag:
+
+```html
+<script defer src="./composer.js"></script>
+```
+
+Vite source development still uses ES modules. The bundled WKWebView runtime uses the classic production tag because local `file://` module scripts are fragile in WebKit. Do not change the generated app asset back to `type="module"`.
+
+## Asset Consistency
+
+`npm run check:assets` builds into a temporary directory and compares the result with the checked-in app bundle assets. CI runs the same verification.
+
+If the check fails:
+
+```bash
+cd packages/web-composer
 npm run build
 npm run check:assets
 ```
 
-`npm run build` regenerates the production assets in `apps/macos/InputoModules/Sources/InputoComposerFeature/Resources/WebComposer`.
-`npm run check:assets` builds into a temporary directory and verifies that the generated files match the checked-in bundled assets without modifying the repository.
+Commit the source and regenerated app assets together.
 
-CI should run `npm ci` and `npm run verify` from `packages/web-composer`. The macOS Xcode build should continue to consume checked-in static assets only.
+## Native Bridge
 
-## Bridge Boundary
+Web calls native through `window.webkit.messageHandlers.inputoNative.postMessage(...)`. The Web bridge client wraps this in typed `tool.call` envelopes and receives `tool.result` or `event` envelopes through `window.InputoNativeBridgeReceiveBase64`.
 
-Web-to-native messages must go through:
+Common tools used by the composer:
 
-- `InputoNativeBridgeHost`
-- `InputoNativeBridgeMessageHandling`
-
-Native-to-Web events must go through:
-
-- `InputoBridgeEventEmitter`
-
-The Web surface must not call arbitrary native APIs. All privileged behavior is expressed as allowlisted bridge tools.
-
-Current composer-relevant tools include:
-
-- `app.hideComposer`
 - `app.snapshot`
+- `app.hideComposer`
 - `composer.setDraft`
 - `composer.setInstruction`
 - `composer.selectRecipe`
@@ -99,117 +140,62 @@ Current composer-relevant tools include:
 - `llm.cancel`
 - `clipboard.copyGeneratedOutput`
 
-Side-effecting user actions, such as Generate, Escape-to-hide, Clear, and Copy, include explicit user-action context in the bridge request.
+Native events used by the composer:
 
-## Network Policy
+- `llm.started`
+- `llm.delta`
+- `llm.completed`
+- `llm.failed`
+- `llm.cancelled`
 
-Web-side networking is disabled.
+The native snapshot is authoritative for settings, recipes, permissions, and initial composer state. Web keeps local interaction state for responsiveness, then synchronizes through explicit tools.
 
-The static page uses a restrictive Content Security Policy, including:
+## Security Constraints
 
+The generated HTML uses a restrictive Content Security Policy:
+
+- `default-src 'self'`
 - `connect-src 'none'`
-- `script-src 'self'`
 - `object-src 'none'`
 - `frame-src 'none'`
 - `worker-src 'none'`
+- `font-src 'none'`
 
-The WK host also installs a `WKContentRuleList` that blocks `http://` and `https://` resource loads.
+The WKWebView host also uses:
 
-Provider calls, future manifest-governed network tools, file access, clipboard writes, and app activation must stay native-hosted.
+- non-persistent `WKWebsiteDataStore`
+- local file loading from the bundled asset directory only
+- navigation restrictions to the asset directory
+- a content rule list that blocks `http` and `https` resources
+- no browser-side provider networking
+- no localStorage, sessionStorage, IndexedDB, service worker, WebSocket, or XMLHttpRequest usage in the bundle
 
-## Storage Policy
+## Debugging
 
-The WK host uses `WKWebsiteDataStore.nonPersistent()`.
-
-The Web assets should not use:
-
-- `localStorage`
-- `sessionStorage`
-- IndexedDB
-- Cache API
-- cookies
-- persistent input or generation history
-
-The v1 posture remains: no input history, no generated-output history, no screenshots, no window-title capture, no automatic paste.
-
-## Theme
-
-Native forwards the current SwiftUI `colorScheme` into Web at document start and whenever it changes.
-
-Web reads the theme from:
-
-- `window.InputoInitialTheme`
-- `window.InputoNativeThemeSet(theme)`
-- `document.documentElement.dataset.theme`
-
-CSS should prefer explicit `[data-theme="light"]` and `[data-theme="dark"]` tokens, with `prefers-color-scheme` only as a fallback for static inspection outside the app.
-
-## Native Material Fit
-
-The native panel uses translucent macOS material, so the Web body must not paint a solid page background or large opaque white panels.
-
-- `html`, `body`, the `WKWebView`, and the WebKit scroll view stay transparent; the host disables WK background drawing when the platform exposes that setting.
-- Composer fields are transparent by default so the native material remains visible behind them.
-- The preview and preset rows may use a subtle translucent rounded surface to restore hierarchy without becoming an opaque Web background.
-- Form controls opt out of default WebKit white backgrounds where needed.
-- Rounded corners should reveal the native material, not a WebView page background.
-
-## Phase 3 Completion
-
-Implemented:
-
-- bundled local static assets
-- minimal WKWebView host
-- non-persistent WebKit data store
-- bundled-file navigation restriction
-- host-level remote content blocking
-- Web-to-native bridge wiring
-- native-to-Web event forwarding
-- Web body as the only composer body
-- native Settings and Jump anchors
-- system light/dark theme propagation
-- transparent Web body that preserves native panel material
-- IME-aware Escape handling through Web-to-native `app.hideComposer`
-- Swift package tests and Xcode build coverage
-
-Manual runtime QA covered before moving to Phase 4:
-
-- initial focus into the Web draft editor
-- draft retention while reopening the panel
-- Chinese IME composition and Return-as-newline behavior
-- IME-aware Escape handling and non-IME Escape-to-hide behavior
-- Command-Return generation
-- Command-A/C/V/Z editing shortcuts in the draft editor
-- dark/light switching while the panel is open
-- provider-backed generation and preview output
-- no local input/output history persistence beyond transient in-memory composer state
-- native material fit, transparent WebView background, rounded surface polish, and accepted visual treatment
-
-Keep broader panel sizing across displays and Spaces in the normal regression checklist.
-
-## Phase 4 Initial Landing
-
-Phase 4 adds a React + TypeScript + Vite source workspace for the Web composer while keeping the same production runtime shape:
-
-- bundled local static assets loaded by the existing `WKWebView` host
-- no React/Vite requirement in the Xcode app target
-- no network access from the WebView
-- no browser storage for input or generated output history
-- Web-to-native calls only through `InputoNativeBridgeHost` / `InputoNativeBridgeMessageHandling`
-- native-to-Web events only through `InputoBridgeEventEmitter`
-- native Settings, Jump anchors, panel behavior, provider networking, clipboard, Keychain, file grants, and permissions remain native
-- typed TypeScript bridge client and reducer tests cover request/response plumbing and streaming state transitions
-
-The richer Web agent planner remains a later phase.
-
-## Verification
-
-Run before handoff:
+For React-only UI issues:
 
 ```bash
 cd packages/web-composer
-npm run verify
-cd ..
-swift test --package-path apps/macos/InputoModules
-xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build
+npm run dev
 ```
+
+For production bundle issues:
+
+```bash
+cd packages/web-composer
+npm run build
+python3 -m http.server 5174 --directory ../../apps/macos/InputoModules/Sources/InputoComposerFeature/Resources/WebComposer
+```
+
+Open `http://127.0.0.1:5174` in a browser to inspect the generated files. The native bridge will be unavailable in this mode, but the UI should still render and show a bridge error instead of a blank page.
+
+For WKWebView runtime issues:
+
+1. Rebuild Web assets with `npm run build`.
+2. Rebuild the macOS app.
+3. Confirm generated `index.html` uses `<script defer src="./composer.js"></script>`.
+4. Confirm generated `index.html` does not contain `type="module"` or `crossorigin`.
+5. Confirm SwiftPM can find the assets with `swift test --package-path apps/macos/InputoModules`.
+6. If the app still appears blank, clean Xcode DerivedData for Inputo and rebuild.
+
+Safari Web Inspector can inspect WKWebView content when the system and Safari developer settings allow WebView inspection. Use it only for local debugging; do not add remote scripts or relax the production CSP to make debugging easier.

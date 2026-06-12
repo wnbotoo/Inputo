@@ -1,10 +1,10 @@
 import { resolve } from "node:path";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   base: "./",
-  plugins: [react()],
+  plugins: [react(), classicWKWebViewAssetTags()],
   build: {
     modulePreload: {
       polyfill: false
@@ -24,3 +24,24 @@ export default defineConfig({
     }
   }
 });
+
+function classicWKWebViewAssetTags(): Plugin {
+  return {
+    name: "inputo-classic-wkwebview-asset-tags",
+    enforce: "post",
+    transformIndexHtml(html, context) {
+      if (!context.bundle) {
+        return html;
+      }
+      return html
+        .replace(
+          '<script type="module" crossorigin src="./composer.js"></script>',
+          '<script defer src="./composer.js"></script>'
+        )
+        .replace(
+          '<link rel="stylesheet" crossorigin href="./composer.css">',
+          '<link rel="stylesheet" href="./composer.css">'
+        );
+    }
+  };
+}

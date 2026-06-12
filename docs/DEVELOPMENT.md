@@ -1,151 +1,135 @@
-# Inputo Development Plan
+# Development
 
-This document tracks the next engineering slices for the macOS MVP and keeps future work aligned with the long-term native architecture.
+This document describes the everyday development workflow for the current Inputo repository.
 
-## Current Product Shape
+## Prerequisites
 
-Inputo is a menu-bar resident, Spotlight-like AI input source for macOS. The user opens it with a custom shortcut or status-bar menu, writes or pastes text, asks for a transform, manually copies the generated result, then jumps back to a target app through app anchors.
+- macOS with Xcode and SwiftPM available on `PATH`.
+- Node.js and npm for `packages/web-composer`.
+- No CocoaPods, Carthage, XcodeGen, or project generator is used.
 
-The app intentionally avoids automatic paste, input history, generated history, screenshots, window titles, MCP execution, and external tools in v1.
+The app must build from checked-in sources without installing Web dependencies. Web dependencies are required only when editing or regenerating the composer assets.
 
-## Current Implementation Status
-
-- The app target is thin and hosts the menu bar app, floating composer panel, and settings window.
-- `AppState` uses small service protocols with live and fake services, so feature flows can be tested without real OS services.
-- Unit coverage exists for generate, copy, reset, anchor activation, provider validation, provider request shape, error redaction, and the neutral provider connection test.
-- Provider configuration supports OpenAI-compatible chat completions endpoints, including base origins, `/v1`, and full `/v1/chat/completions` URLs.
-- The app sandbox includes the network client entitlement required for provider requests.
-- Settings has a neutral "Save & Test Connection" action that does not use translation as the smoke test.
-- The composer is a compact single-column native shell with native header, native Jump anchors, and a bundled `WKWebView` body for preview, preset/instruction controls, input, and actions.
-- Settings window sizing has been stabilized with explicit SwiftUI/AppKit hosting dimensions.
-- Phase 1 native executor DTOs now exist in `InputoCore` for tool ids, tool descriptors, bridge envelopes, streaming events, cancellation, safe errors, grant-based file access payloads, permission snapshots, and native executor state snapshots.
-- `InputoComposerFeature.AppState` can now produce a typed native executor snapshot and expose explicit generation cancellation without moving product behavior into the Xcode app target.
-
-## Phase 0/1 Status
-
-Phase 0 remains the native v0.1 baseline. The app still needs ongoing real-device/provider regression QA for the full transform, Copy, app-anchor, menu-bar, hotkey, multi-display, and full-screen Space loops.
-
-Phase 1 has started with the smallest stable contract surface:
-
-- `InputoCore` owns Foundation-only executor contracts in `NativeExecutorContract.swift`.
-- Native tools are allowlisted and carry policy metadata: side-effect class, minimum agent mode, explicit-action requirement, per-call confirmation, cancellation support, and streaming support.
-- File tools are contract-only and grant-based: future reads/writes must go through native picker/save-panel grants rather than arbitrary Web-provided paths.
-- The JSON bridge dispatcher in `InputoComposerFeature` now executes the Phase 2A-D native executor tools: app snapshot/hide, composer draft/instruction/recipe/clear, LLM chat/stream/cancel, clipboard copy, app anchors, settings open, permission status/request, and grant-based file picker/read/write.
-- `AIProviderClient.streamTransform` parses OpenAI-compatible SSE chunks, and `AppState.streamGenerate` updates native composer state incrementally for `llm.stream`.
-- `InputoNativeBridgeMessageHandling` and `InputoNativeBridgeHost` define the host-facing protocol used by the WKWebView adapter.
-- `network.fetch` remains explicitly policy-denied until manifest-governed network policy exists.
-- `AppState.nativeExecutorSnapshot(agentMode:)` separates capability state from SwiftUI presentation enough for a future bridge host to read state without importing SwiftUI.
-- Tests cover contract encoding, conservative tool policy, provider-error mapping, snapshot privacy, bridge dispatch, bridge error envelopes, user-action policy, request-id cancellation, event emission, streaming delta coalescing, and grant-based file tools.
-- Phase 3 now has a minimal `WKWebView` composer body host in `InputoComposerFeature` that loads bundled static assets, uses a non-persistent data store, restricts navigation to the asset bundle, routes Web-to-native messages through `InputoNativeBridgeHost`, and forwards native events through `InputoBridgeEventEmitter`.
-- `docs/WEB_COMPOSER.md` records the current Web composer implementation, React/Vite source workspace, security boundary, packaging decision, and Phase 4 status.
-- Phase 4 has an initial React + TypeScript + Vite `packages/web-composer` workspace that regenerates the bundled Web composer assets while keeping Xcode builds independent of Node. Web agent planner work remains intentionally unstarted.
-- The repository now uses the target monorepo layout: `apps/macos`, `apps/windows`, `packages/web-composer`, `packages/bridge-contracts-ts`, `contracts`, `docs`, and `tools`.
-
-## Development Principles
-
-- Keep `Inputo` as a thin Xcode app target for lifecycle, menu-bar integration, and AppKit window hosting.
-- Put macOS product behavior in local SwiftPM modules under `apps/macos/InputoModules`.
-- Keep `InputoCore` pure Foundation and Codable/Sendable-friendly so it can later be mirrored or replaced by a Rust/C++ core.
-- Keep OS APIs behind platform services in `InputoMacPlatform`.
-- Prefer small feature targets over growing the app target when new product areas appear.
-- Do not introduce CocoaPods, Carthage, XcodeGen, or project generators.
-- Preserve the v1 privacy posture: no input history, no generated history, no window-title capture, no screenshots.
-
-## Immediate Priorities
-
-1. Prove the native v0.1 loop.
-   - Run a real provider transform such as translation or polish from the floating composer.
-   - Confirm clipboard is unchanged before Copy and correct after Copy.
-   - Confirm app-anchor activation returns to the selected target app and clears transient state.
-   - Verify status-bar opening and hotkey opening across common apps, Spaces, and multiple displays.
-
-2. Tighten composer ergonomics.
-   - Keep the panel compact, single-column, and no taller than roughly one third of the visible screen where possible.
-   - Improve keyboard navigation between anchors, preview, preset, instruction, input, generate, clear, and copy.
-   - Decide whether Copy should keep the composer open, hide it, or offer both actions.
-   - Continue visual QA for top/bottom margins and titlebar safe-area behavior.
-
-3. Improve first-run and settings UX.
-   - Guide the user to set provider, model, API key, and hotkey before first generation.
-   - Keep provider validation and connection-test diagnostics clear without leaking secrets.
-   - Add more explicit permission/status indicators for shortcut and app-anchor behavior.
-
-4. Continue Phase 4 Web composer engineering.
-   - Keep the React + TypeScript + Vite `packages/web-composer` source workspace aligned with the existing Web composer body.
-   - Keep the current monorepo layout stable and avoid further directory churn unless a new package or app boundary requires it.
-   - Keep the production output as bundled local static assets loaded by the current `WKWebView` host.
-   - Keep Xcode app builds independent of `npm install`, network access, or frontend dev servers.
-   - Use `npm run verify` in `packages/web-composer` to typecheck, test, regenerate, and confirm bundled asset consistency when changing the Web source.
-   - Keep Web-to-native calls behind `InputoNativeBridgeHost` / `InputoNativeBridgeMessageHandling`.
-   - Keep native-to-Web events behind `InputoBridgeEventEmitter`.
-   - Port the accepted Phase 3 focus, IME, Escape, keyboard shortcut, dark-mode, streaming, and visual behavior without expanding Web privileges.
-
-5. Preserve the native boundary while frontend tooling lands.
-   - Native keeps the shell, Settings, Jump anchors, panel behavior, app activation, Keychain, clipboard, provider networking, file grants, and permissions.
-   - WebView remains non-persistent, bundled-only, and network-blocked.
-   - Do not add browser storage for input/output history.
-   - Do not enable `network.fetch`, connector tools, MCP tools, or a Web agent planner during Phase 4.
-   - Keep panel sizing across displays and Spaces in regression QA.
-
-## Backlog
-
-- Add `InputoSettingsFeature` if settings grows beyond a small view.
-- Add `InputoProviderFeature` if provider configuration becomes multi-provider.
-- Add `InputoToolsFeature` only after v1 text workflows are stable.
-- Add contract examples under `contracts/examples`.
-- Add JSON schema validation tests for shared contracts.
-- Add macOS UI smoke tests for launch, show composer, open settings, and copy flow.
-- Add manual QA checklist for multi-display and full-screen spaces.
-- Add app icon and refined status-bar icon.
-- Add optional "copy and hide" command after the basic copy flow is proven.
-- Add optional "last target app" quick action once anchor tracking is stable.
-- Keep Settings native unless a later phase explicitly scopes a Web settings surface.
-- Add bridge contract tests if a web UI is introduced.
-
-## Deferred Until After MVP
-
-- Windows WinUI 3 implementation.
-- Full hybrid web UI implementation beyond the minimal composer host.
-- MCP connector execution.
-- Tool execution.
-- Automatic paste.
-- Referenced-source retrieval.
-- Image input and attachments.
-- User input or generation history.
-- Window thumbnails or title capture.
-- Rust/C++ shared core.
-
-## Verification Commands
-
-Run these before handing off meaningful changes:
+## First Setup
 
 ```bash
-cd packages/web-composer && npm run verify && cd ..
+cd /Users/wnbot/Projects/Inputo
+npm install --prefix packages/web-composer
+```
+
+Open the app in Xcode:
+
+```bash
+open apps/macos/Inputo.xcodeproj
+```
+
+Or build from the command line:
+
+```bash
+xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build
+```
+
+## Daily Verification
+
+Run these before committing changes that touch macOS, contracts, or generated Web assets:
+
+```bash
 swift test --package-path apps/macos/InputoModules
 xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build
 ```
 
-## Continuous Integration
+Run this before committing Web composer source or bundled Web assets:
 
-GitHub Actions runs the same verification split by responsibility:
+```bash
+cd packages/web-composer
+npm run verify
+```
 
-- `web-composer`: installs `packages/web-composer` dependencies with `npm ci` and runs `npm run verify`.
-- `macos`: runs `swift test --package-path apps/macos/InputoModules` and the Xcode Debug build.
+`npm run verify` typechecks, runs Vitest, rebuilds the production bundle, and confirms the checked-in app assets match the Web source.
 
-The CI split preserves the local build policy: Xcode and SwiftPM do not run Node during normal macOS builds, while pull requests still verify that checked-in bundled Web assets match the React/Vite source.
+## Web Composer Workflow
+
+Start the Vite dev server when working on React UI:
+
+```bash
+cd packages/web-composer
+npm run dev
+```
+
+Regenerate the assets used by the macOS app:
+
+```bash
+cd packages/web-composer
+npm run build
+```
+
+The build writes to:
+
+```text
+apps/macos/InputoModules/Sources/InputoComposerFeature/Resources/WebComposer
+```
+
+Do not edit generated `composer.js`, `composer.css`, or generated `index.html` by hand. Edit files under `packages/web-composer/src` or `packages/web-composer/index.html`, then run `npm run build`.
 
 ## Manual QA Checklist
 
-- Launch Inputo from Xcode.
-- Open from the status-bar menu while Xcode is frontmost.
-- Open from the status-bar menu while Safari, Chrome, Notes, Messages, and Finder are frontmost.
-- Open from the custom hotkey while another app is focused.
-- Verify the composer appears near the bottom center of the active display.
-- Verify text input receives focus after opening.
-- Generate with missing API key and confirm a clear error.
-- Generate with a valid OpenAI-compatible provider.
-- Confirm clipboard is unchanged until Copy is clicked.
-- Click Copy and confirm clipboard contains the generated text.
-- Click an app anchor and confirm Inputo hides after successful activation.
-- Try activation when a target app quits between refresh and click.
-- Repeat on another display and in a full-screen Space.
+For macOS runtime changes, verify:
+
+- the menu bar item opens the composer
+- the configured global shortcut toggles the composer
+- the Web composer is visible and focused
+- typing and paste work in the draft editor
+- Chinese/Japanese/Korean IME composition does not close the panel on Escape
+- Command-Return starts generation
+- streaming preview appears incrementally
+- Cancel stops the active generation
+- Copy writes only the generated preview after explicit user action
+- Clear resets the composer state
+- app anchors refresh and activate apps without showing window titles
+- settings save provider config and API key correctly
+- dark and light appearances render legibly
+- no input/output history is persisted
+
+## Troubleshooting
+
+Blank Web composer:
+
+- Run `cd packages/web-composer && npm run build`.
+- Confirm `apps/macos/InputoModules/Sources/InputoComposerFeature/Resources/WebComposer/index.html` contains `<script defer src="./composer.js"></script>`.
+- Confirm it does not contain `type="module"` in the production asset. The bundled WKWebView runtime uses a classic script tag for local-file compatibility.
+- Rebuild the app with `xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build`.
+- If Xcode keeps old resources, clean DerivedData for Inputo or change `-derivedDataPath`.
+
+SwiftPM cache errors after moving directories:
+
+```bash
+swift package --package-path apps/macos/InputoModules clean
+swift test --package-path apps/macos/InputoModules
+```
+
+Web assets out of sync:
+
+```bash
+cd packages/web-composer
+npm run build
+npm run check:assets
+```
+
+Expected WebContent logs:
+
+When running the macOS app from Xcode, the `WebContent` helper process may print sandbox-related warnings from system frameworks. These messages are expected when the composer renders correctly and the app does not crash:
+
+| Log fragment | Meaning |
+| --- | --- |
+| `Missing com.apple.linkd.application-service / com.apple.linkd.autoShortcut mach-lookup entitlement` | WebKit or linked system frameworks attempted to register with LinkDaemon/App Intents services that third-party WebContent processes are not entitled to use. Inputo does not need these entitlements. |
+| `Error registering app with intents framework` | Follow-on App Intents registration failure from the same system-service lookup. Harmless for the current app. |
+| `AudioComponentRegistrar ... Operation not permitted` | The WebContent process probed audio component registration. Inputo's composer does not use audio, so this is noise unless audio features are added later. |
+| `Sandbox is preventing this process from reading networkd settings file` | The WebContent sandbox cannot read global networkd preferences. The composer does not perform browser-side networking; provider requests are native. |
+| `Unable to hide query parameters from script (missing data)` | WebKit privacy/logging message. The bundled composer uses local relative assets and does not depend on query parameters. |
+| `WebProcess::markAllLayersVolatile: Failed to mark layers as volatile` | WebKit layer memory-management warning. It is not actionable unless paired with rendering glitches or crashes. |
+
+Do not add private Apple entitlements or loosen the sandbox to silence these logs. Investigate only if the Web composer is blank, resources fail to load, provider requests fail, or the app crashes.
+
+## Commit Hygiene
+
+Keep generated Web assets in the same commit as the Web source that produced them. Keep platform behavior, contract changes, and documentation updates together when they change the same boundary. Ignored build artifacts such as `.build/`, `apps/macos/InputoModules/.build/`, and `packages/web-composer/node_modules/` should not be committed.

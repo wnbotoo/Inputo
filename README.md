@@ -1,6 +1,6 @@
 # Inputo
 
-Inputo is a native macOS MVP for a system-wide AI input source. It behaves like a Spotlight-style floating composer: open it with a user-defined shortcut or menu bar item, transform text with an OpenAI-compatible provider, copy the preview manually, then jump back to another app through app anchors.
+Inputo is a macOS app for a system-wide AI input source. It behaves like a Spotlight-style floating composer: open it with a user-defined shortcut or menu bar item, transform text with an OpenAI-compatible provider, copy the preview manually, then jump back to another app through app anchors.
 
 ## Run
 
@@ -23,7 +23,7 @@ On first launch, open **Inputo > Settings** from the menu bar item, add an OpenA
 - Built-in and custom transform presets
 - No automatic paste
 - No input or generation history
-- No MCP/tool execution in v1
+- No external MCP or connector execution in v1
 
 ## Shared Contracts
 
@@ -31,13 +31,13 @@ Cross-platform contracts live in `contracts/inputo.v1.schema.json`. The future W
 
 ## Documentation
 
-- `docs/ARCHITECTURE.md`: architecture, module boundaries, and future shared-core path.
-- `docs/DEVELOPMENT.md`: current roadmap, todo list, verification commands, and manual QA checklist.
-- `docs/HANDOVER.md`: concise project state for future conversations or contributors.
-- `docs/HANDOVER_WEB_UI_DISCUSSION.md`: handover prompt for Phase 4 Web composer engineering and later Web UI discussions.
-- `docs/NATIVE_EXECUTOR_CONTRACT.md`: Phase 0/1 native executor contract status, DTOs, tool registry, and bridge boundary.
-- `docs/WEB_COMPOSER.md`: current WKWebView composer body implementation, React/Vite source workspace, security boundary, and packaging model.
-- `docs/WEB_UI_ARCHITECTURE.md`: planned web-agent/native-executor architecture, bridge boundary, streaming model, and tool ecosystem direction.
+- `docs/PROJECT_STRUCTURE.md`: monorepo map, directory responsibilities, and dependency direction.
+- `docs/ARCHITECTURE.md`: system architecture, runtime flow, ownership boundaries, and privacy defaults.
+- `docs/ROADMAP.md`: planned milestones, near-term backlog, and definition of done.
+- `docs/DEVELOPMENT.md`: setup, verification commands, QA checklist, and troubleshooting.
+- `docs/WEB_COMPOSER.md`: React/Vite Web composer development, bundling, deployment, debugging, and WKWebView constraints.
+- `docs/WEB_UI_ARCHITECTURE.md`: Web UI ownership model, state flow, bridge rules, and future agent boundary.
+- `docs/NATIVE_EXECUTOR_CONTRACT.md`: native bridge envelope, tool policy, events, errors, and implementation locations.
 
 ## Project Layout
 
@@ -48,7 +48,7 @@ Cross-platform contracts live in `contracts/inputo.v1.schema.json`. The future W
 - `packages/bridge-contracts-ts`: reserved package for generated or hand-maintained TypeScript bridge contract helpers.
 - `apps/windows`: reserved location for the future WinUI/WebView2 shell.
 - `contracts`: language-neutral schemas and fixtures.
-- `docs`: architecture, development, and handover notes.
+- `docs`: architecture and development documentation.
 - `tools`: reserved location for repository automation scripts.
 
 ## SwiftPM Package Targets
