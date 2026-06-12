@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "check:assets": "node scripts/check-generated-assets.mjs",
     "dev": "vite --host 127.0.0.1",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verify": "npm run typecheck && npm test && npm run build && npm run check:assets"
   },
   "dependencies": {
     "react": "^19.2.1",

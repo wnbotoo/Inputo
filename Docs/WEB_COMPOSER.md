@@ -66,9 +66,11 @@ npm install
 npm run typecheck
 npm test
 npm run build
+npm run check:assets
 ```
 
 `npm run build` regenerates the production assets in `InputoModules/Sources/InputoComposerFeature/Resources/WebComposer`.
+`npm run check:assets` builds into a temporary directory and verifies that the generated files match the checked-in bundled assets without modifying the repository.
 
 ## Bridge Boundary
 
@@ -203,6 +205,9 @@ The richer Web agent planner remains a later phase.
 Run before handoff:
 
 ```bash
+cd WebComposer
+npm run verify
+cd ..
 swift test --package-path InputoModules
 xcodebuild -project Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build
 ```

@@ -74,6 +74,7 @@ Phase 1 has started with the smallest stable contract surface:
    - Treat the repository as a gradual monorepo: keep current macOS paths stable, add a top-level Web composer workspace, and defer broader `apps/`/`packages/` reshuffling until Windows work has real shape.
    - Keep the production output as bundled local static assets loaded by the current `WKWebView` host.
    - Keep Xcode app builds independent of `npm install`, network access, or frontend dev servers.
+   - Use `npm run verify` in `WebComposer` to typecheck, test, regenerate, and confirm bundled asset consistency when changing the Web source.
    - Keep Web-to-native calls behind `InputoNativeBridgeHost` / `InputoNativeBridgeMessageHandling`.
    - Keep native-to-Web events behind `InputoBridgeEventEmitter`.
    - Port the accepted Phase 3 focus, IME, Escape, keyboard shortcut, dark-mode, streaming, and visual behavior without expanding Web privileges.
@@ -118,6 +119,7 @@ Phase 1 has started with the smallest stable contract surface:
 Run these before handing off meaningful changes:
 
 ```bash
+cd WebComposer && npm run verify && cd ..
 swift test --package-path InputoModules
 xcodebuild -project Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build
 ```
