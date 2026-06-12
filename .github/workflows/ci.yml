@@ -18,6 +18,7 @@ jobs:
   web-composer:
     name: WebComposer
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: packages/web-composer
@@ -35,15 +36,26 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Print toolchain versions
+        run: |
+          node --version
+          npm --version
+
       - name: Verify WebComposer
         run: npm run verify
 
   macos:
     name: macOS app
     runs-on: macos-latest
+    timeout-minutes: 30
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Print toolchain versions
+        run: |
+          swift --version
+          xcodebuild -version
 
       - name: Run Swift package tests
         run: swift test --package-path apps/macos/InputoModules

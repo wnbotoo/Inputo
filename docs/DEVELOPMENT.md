@@ -29,6 +29,22 @@ Or build from the command line:
 xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build
 ```
 
+## Open Source Contributor Workflow
+
+Before starting a change:
+
+- read [CONTRIBUTING.md](../CONTRIBUTING.md), [PRIVACY.md](../PRIVACY.md), and [docs/ARCHITECTURE.md](ARCHITECTURE.md)
+- open or comment on an issue before large product, privacy, bridge, dependency, release, or platform-boundary changes
+- avoid posting API keys, private prompts, generated confidential text, sensitive screenshots, or local file paths in public issues and pull requests
+- keep the Xcode app target thin and put product behavior in `apps/macos/InputoModules`
+
+Before opening a pull request:
+
+- run the verification commands that match the affected area
+- include manual QA notes for UI, clipboard, provider, anchor, permission, or bridge changes
+- update README/docs when commands, paths, privacy boundaries, architecture, or user workflows change
+- keep generated Web assets in the same change as the Web source that produced them
+
 ## Daily Verification
 
 Run these before committing changes that touch macOS, contracts, or generated Web assets:
@@ -46,6 +62,16 @@ npm run verify
 ```
 
 `npm run verify` typechecks, runs Vitest, rebuilds the production bundle, and confirms the checked-in app assets match the Web source.
+
+## CI
+
+GitHub Actions currently runs:
+
+- `npm run verify` in `packages/web-composer`
+- `swift test --package-path apps/macos/InputoModules`
+- `xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build`
+
+The Xcode build intentionally disables code signing for CI with `CODE_SIGNING_ALLOWED=NO`. Release signing and notarization are separate future work.
 
 ## Web Composer Workflow
 
@@ -129,6 +155,19 @@ When running the macOS app from Xcode, the `WebContent` helper process may print
 | `WebProcess::markAllLayersVolatile: Failed to mark layers as volatile` | WebKit layer memory-management warning. It is not actionable unless paired with rendering glitches or crashes. |
 
 Do not add private Apple entitlements or loosen the sandbox to silence these logs. Investigate only if the Web composer is blank, resources fail to load, provider requests fail, or the app crashes.
+
+## Privacy Review Checklist
+
+For changes that affect state, networking, permissions, file access, app activation, clipboard behavior, logs, or bridge tools, verify:
+
+- Web code still cannot read provider API keys
+- provider requests still originate in native code
+- clipboard writes still require explicit user action
+- app anchors still avoid window titles and target-control contents
+- no input history or generated output history is persisted
+- logs and display-safe errors do not include secrets, private prompts, provider credentials, local paths, or stack traces with sensitive details
+- new bridge tools include policy metadata, tests, fixtures where useful, and documentation updates
+- any new dependency is compatible with the Apache 2.0 release posture and does not silently add telemetry or hosted scripts
 
 ## Commit Hygiene
 

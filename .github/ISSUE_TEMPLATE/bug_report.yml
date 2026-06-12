@@ -1,0 +1,81 @@
+name: Bug report
+description: Report a reproducible problem in Inputo.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Inputo. Please remove secrets, prompts, generated confidential text, local paths, and private screenshots before submitting.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open...
+        2. Configure...
+        3. Click...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - macOS app shell
+        - Composer UI
+        - Provider requests
+        - Settings and Keychain
+        - Clipboard
+        - App anchors
+        - Native bridge
+        - Web composer build
+        - Documentation
+        - Unsure
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "14.7, 15.5, etc."
+  - type: input
+    id: xcode
+    attributes:
+      label: Xcode version
+      placeholder: "16.4, etc."
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Paste only redacted logs. Do not include API keys, private prompts, generated confidential text, or sensitive screenshots.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I removed secrets, private prompts, generated confidential text, and sensitive screenshots.
+          required: true
+        - label: I searched existing issues before opening this one.
+          required: true

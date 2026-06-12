@@ -1,69 +1,152 @@
 # Inputo
 
-Inputo is a macOS app for a system-wide AI input source. It behaves like a Spotlight-style floating composer: open it with a user-defined shortcut or menu bar item, transform text with an OpenAI-compatible provider, copy the preview manually, then jump back to another app through app anchors.
+Inputo is a privacy-conscious macOS menu-bar app for system-wide AI text composition. Open a Spotlight-style composer, transform text with an OpenAI-compatible provider, copy the preview manually, and jump back to another app through app-level anchors.
 
-## Run
+![Inputo composer preview](docs/assets/inputo-composer-preview.svg)
 
-Open `apps/macos/Inputo.xcodeproj` in Xcode and run the `Inputo` scheme, or build from the command line:
+Inputo is early-stage software. The current repository focuses on a working macOS app, a bundled Web composer, shared contracts, and a careful native/Web trust boundary.
+
+## Product Positioning
+
+Inputo is for people who want a fast local composer in front of any app without giving a browser UI access to credentials or broad OS privileges.
+
+It is designed around a few principles:
+
+- native code owns OS privileges, credentials, provider networking, clipboard writes, app activation, permissions, and file grants
+- Web code owns the composer body UI and talks to native through a versioned, allowlisted bridge
+- provider requests use an OpenAI-compatible `/v1/chat/completions` API configured by the user
+- clipboard writes and app activation require explicit user action
+- input and generated output are not stored as history
+
+## Current Scope
+
+- macOS SwiftUI/AppKit menu-bar app
+- floating composer with keyboard shortcut support
+- React + TypeScript Web composer bundled into the app
+- native bridge for allowlisted composer tools
+- OpenAI-compatible streaming provider requests from native code
+- provider settings and API key storage through macOS services
+- manual copy flow and app-level jump anchors
+- Swift package tests, Web composer tests, generated-asset verification, and GitHub Actions CI
+
+## Privacy Boundary
+
+Inputo's default privacy boundary is intentionally narrow:
+
+- no input history or generated output history
+- no screenshots
+- no window-title capture
+- no target-control content capture
+- no automatic paste
+- no provider API keys in Web storage or Web snapshots
+- no browser-side provider networking
+- no arbitrary local file reads from Web code
+
+Read [PRIVACY.md](PRIVACY.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full boundary.
+
+## Install
+
+There is no signed public release yet. For now, build from source on macOS:
 
 ```bash
 xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build
 ```
 
-On first launch, open **Inputo > Settings** from the menu bar item, add an OpenAI-compatible base URL, model, API key, and record a shortcut.
+Or open `apps/macos/Inputo.xcodeproj` in Xcode and run the `Inputo` scheme.
 
-## MVP Scope
+On first launch, open **Inputo > Settings** from the menu-bar item, add an OpenAI-compatible base URL, model, and API key, then record a shortcut.
 
-- Native macOS SwiftUI/AppKit implementation
-- Menu bar resident app
-- Spotlight-like floating composer
-- App-level jump anchors
-- Manual clipboard copy
-- OpenAI-compatible `/v1/chat/completions` provider
-- Built-in and custom transform presets
-- No automatic paste
-- No input or generation history
-- No external MCP or connector execution in v1
+## Development
 
-## Shared Contracts
+Prerequisites:
 
-Cross-platform contracts live in `contracts/inputo.v1.schema.json`. The future Windows app should implement the same provider, recipe, and app-anchor concepts with WinUI 3 and Win32 interop.
+- macOS with Xcode and SwiftPM on `PATH`
+- Node.js and npm when editing `packages/web-composer`
 
-## Documentation
+Install Web dependencies only when changing the Web composer:
 
-- `docs/PROJECT_STRUCTURE.md`: monorepo map, directory responsibilities, and dependency direction.
-- `docs/ARCHITECTURE.md`: system architecture, runtime flow, ownership boundaries, and privacy defaults.
-- `docs/ROADMAP.md`: planned milestones, near-term backlog, and definition of done.
-- `docs/DEVELOPMENT.md`: setup, verification commands, QA checklist, and troubleshooting.
-- `docs/WEB_COMPOSER.md`: React/Vite Web composer development, bundling, deployment, debugging, and WKWebView constraints.
-- `docs/WEB_UI_ARCHITECTURE.md`: Web UI ownership model, state flow, bridge rules, and future agent boundary.
-- `docs/NATIVE_EXECUTOR_CONTRACT.md`: native bridge envelope, tool policy, events, errors, and implementation locations.
+```bash
+npm install --prefix packages/web-composer
+```
 
-## Project Layout
-
-- `apps/macos/Inputo.xcodeproj`: thin macOS app target.
-- `apps/macos/Inputo/App`: app lifecycle, window hosting, and menu bar shell.
-- `apps/macos/InputoModules`: local Swift package for macOS product modules.
-- `packages/web-composer`: React, TypeScript, and Vite source workspace that regenerates the bundled Web composer assets.
-- `packages/bridge-contracts-ts`: reserved package for generated or hand-maintained TypeScript bridge contract helpers.
-- `apps/windows`: reserved location for the future WinUI/WebView2 shell.
-- `contracts`: language-neutral schemas and fixtures.
-- `docs`: architecture and development documentation.
-- `tools`: reserved location for repository automation scripts.
-
-## SwiftPM Package Targets
-
-- `InputoCore`: Foundation-only core contracts and OpenAI-compatible provider logic.
-- `InputoMacPlatform`: macOS services such as app anchors, shortcuts, clipboard, Keychain, and settings storage.
-- `InputoComposerFeature`: composer UI, settings UI, and feature orchestration.
-
-## Development Policy
-
-Inputo uses Swift Package Manager as the module and dependency baseline. The Xcode project owns only the thin macOS app target and consumes local package products from `apps/macos/InputoModules`. Do not add CocoaPods, Carthage, XcodeGen, or other project generators unless this policy is explicitly changed.
-
-Every macOS change should keep these commands working:
+Every macOS or contract change should keep these commands passing:
 
 ```bash
 swift test --package-path apps/macos/InputoModules
 xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build
 ```
+
+Every Web composer change should also pass:
+
+```bash
+npm --prefix packages/web-composer run verify
+```
+
+Read [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for setup, QA, generated Web assets, and troubleshooting.
+
+## Architecture
+
+```mermaid
+flowchart TB
+  user["User"]
+  shell["macOS shell\nSwiftUI + AppKit"]
+  web["Bundled Web composer\nReact + TypeScript"]
+  bridge["Native bridge\nallowlisted tool calls"]
+  state["AppState"]
+  core["InputoCore\ncontracts + provider client"]
+  platform["InputoMacPlatform\nKeychain, clipboard, anchors"]
+  provider["OpenAI-compatible provider"]
+  os["macOS services"]
+
+  user --> shell
+  shell --> web
+  web --> bridge
+  bridge --> state
+  state --> core
+  state --> platform
+  core --> provider
+  platform --> os
+```
+
+The Xcode project is intentionally thin. Product behavior lives in the local Swift package at `apps/macos/InputoModules`; the Web composer source lives in `packages/web-composer` and generates checked-in app resources.
+
+## Documentation
+
+- [Project structure](docs/PROJECT_STRUCTURE.md): monorepo map, directory responsibilities, and dependency direction.
+- [Architecture](docs/ARCHITECTURE.md): system architecture, runtime flow, trust boundaries, and privacy defaults.
+- [Development](docs/DEVELOPMENT.md): setup, verification commands, QA checklist, and troubleshooting.
+- [Roadmap](docs/ROADMAP.md): planned milestones, near-term backlog, and definition of done.
+- [Open source readiness](docs/OPEN_SOURCE.md): checklist for public repository launch.
+- [Support](SUPPORT.md): where to ask questions and how to keep reports redacted.
+- [Web composer](docs/WEB_COMPOSER.md): React/Vite development, bundling, deployment, debugging, and WKWebView constraints.
+- [Web UI architecture](docs/WEB_UI_ARCHITECTURE.md): Web UI ownership model, state flow, bridge rules, and future agent boundary.
+- [Native executor contract](docs/NATIVE_EXECUTOR_CONTRACT.md): native bridge envelope, tool policy, events, errors, and implementation locations.
+- [Third-party notices](THIRD_PARTY_NOTICES.md): direct dependency license notes.
+
+## Roadmap
+
+Near-term work focuses on runtime hardening, composer UX polish, shared bridge contract checks, native executor UX, Windows shell preparation, and a repeatable release pipeline. See [docs/ROADMAP.md](docs/ROADMAP.md).
+
+## What Inputo Is Not
+
+Inputo is not currently:
+
+- an autonomous desktop agent
+- a keylogger, screen reader, screenshot pipeline, or window-title collector
+- an automatic paste tool
+- a hosted Web app
+- an MCP or connector runtime
+- a file-system automation tool without native user grants
+- a replacement for reviewing your provider's privacy and retention policy
+
+## Contributing
+
+Contributions are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), follow the [Code of Conduct](CODE_OF_CONDUCT.md), and keep privacy-sensitive changes explicit in issues and pull requests.
+
+For support questions, see [SUPPORT.md](SUPPORT.md).
+
+Please report vulnerabilities privately through [SECURITY.md](SECURITY.md).
+
+## License
+
+Inputo is licensed under the [Apache License 2.0](LICENSE). Contributions intentionally submitted to this repository are accepted under the same license unless marked otherwise.

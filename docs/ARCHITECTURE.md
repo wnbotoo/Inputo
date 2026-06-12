@@ -28,6 +28,33 @@ flowchart TB
   platform --> os
 ```
 
+## Trust Boundaries
+
+Inputo has three important trust boundaries:
+
+```mermaid
+flowchart LR
+  user["User intent"]
+  web["Bundled Web composer\nUI state only"]
+  native["Native app boundary\npolicy + privileged execution"]
+  secrets["Keychain\nprovider API keys"]
+  provider["Configured provider\nremote inference"]
+  os["macOS\nclipboard, activation, permissions"]
+
+  user --> web
+  web -->|"allowlisted bridge calls\nno secrets"| native
+  native -->|"credential lookup"| secrets
+  native -->|"explicit generation request"| provider
+  native -->|"explicit user action"| os
+```
+
+- Web can request only allowlisted native tools through versioned envelopes.
+- Native validates tool policy before executing platform work.
+- API keys stay in Keychain and are not included in Web snapshots, settings summaries, logs, or bridge events.
+- Provider requests leave the device only after the user triggers generation.
+- Clipboard writes, app activation, and future file access remain native-mediated actions.
+- File access should be grant-scoped through native pickers or save panels, not arbitrary Web-supplied paths.
+
 ## Runtime Flow
 
 ```mermaid
@@ -117,6 +144,20 @@ Web must not perform provider requests directly, persist input/output history, r
 ## Privacy Defaults
 
 Inputo does not store input history, generated text history, screenshots, window titles, target-control contents, or provider API keys in Web storage. API keys live in the platform credential store. The app uses app-level anchors and avoids screen recording by default.
+
+## Open Source Review Points
+
+When reviewing external contributions, pay special attention to changes that:
+
+- move provider networking, credential handling, clipboard writes, app activation, file access, or permission prompts from native code into Web code
+- add persistence for prompts, generated output, provider responses, local paths, screenshots, window titles, or diagnostics
+- expose provider URLs with credentials, stack traces, local paths, or sensitive OS details to Web or public logs
+- expand bridge tools without updating policy metadata, tests, fixtures, and documentation
+- weaken explicit user-action checks around clipboard writes, app activation, provider calls, file grants, or future native executors
+- introduce remote scripts, hosted Web assets, analytics, telemetry, crash reporting, or external network access outside the configured provider request path
+- add dependencies that affect release licensing, signing, notarization, or sandbox behavior
+
+When in doubt, keep the capability native, require visible user intent, return display-safe data, and update [PRIVACY.md](../PRIVACY.md), [NATIVE_EXECUTOR_CONTRACT.md](NATIVE_EXECUTOR_CONTRACT.md), and [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Future Platforms
 

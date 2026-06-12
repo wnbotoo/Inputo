@@ -1,0 +1,32 @@
+name: Documentation
+description: Report missing, confusing, or outdated documentation.
+title: "[Docs]: "
+labels:
+  - documentation
+body:
+  - type: textarea
+    id: location
+    attributes:
+      label: Documentation location
+      description: Which file, section, command, or workflow is affected?
+    validations:
+      required: true
+  - type: textarea
+    id: issue
+    attributes:
+      label: Issue
+      description: What is missing, confusing, or incorrect?
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested change
+      description: If you have a proposed wording or structure, add it here.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I checked the README and docs directory before opening this issue.
+          required: true

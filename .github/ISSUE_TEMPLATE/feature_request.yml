@@ -1,0 +1,62 @@
+name: Feature request
+description: Propose a focused product or developer-experience improvement.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Inputo keeps OS privileges native and user actions explicit. Features that add capture, paste, file, network, or tool-execution behavior need a clear privacy and permission model.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user or contributor problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Describe the change you would like to see.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Composer UX
+        - Provider support
+        - Settings
+        - Privacy and permissions
+        - Native bridge
+        - Web composer
+        - Windows preparation
+        - Release pipeline
+        - Documentation
+        - Unsure
+    validations:
+      required: true
+  - type: textarea
+    id: privacy
+    attributes:
+      label: Privacy and security impact
+      description: What data, permissions, provider calls, clipboard writes, files, or app activation behavior would change?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What smaller or safer alternatives did you consider?
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I described the privacy and security impact, including any automatic paste, screenshot, window-title, file, provider networking, or native-tool behavior.
+          required: true
+        - label: I searched existing issues before opening this one.
+          required: true
