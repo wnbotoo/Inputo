@@ -6,3 +6,4 @@ xcuserdata/
 *.xcuserdatad/
 *.xcuserstate
 .netrc
+node_modules/

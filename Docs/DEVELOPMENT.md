@@ -37,8 +37,8 @@ Phase 1 has started with the smallest stable contract surface:
 - `AppState.nativeExecutorSnapshot(agentMode:)` separates capability state from SwiftUI presentation enough for a future bridge host to read state without importing SwiftUI.
 - Tests cover contract encoding, conservative tool policy, provider-error mapping, snapshot privacy, bridge dispatch, bridge error envelopes, user-action policy, request-id cancellation, event emission, streaming delta coalescing, and grant-based file tools.
 - Phase 3 now has a minimal `WKWebView` composer body host in `InputoComposerFeature` that loads bundled static assets, uses a non-persistent data store, restricts navigation to the asset bundle, routes Web-to-native messages through `InputoNativeBridgeHost`, and forwards native events through `InputoBridgeEventEmitter`.
-- `Docs/WEB_COMPOSER.md` records the current Web composer implementation, security boundary, packaging decision, Phase 3 manual QA coverage, and Phase 4 direction.
-- React, Vite, and Web agent planner work remain intentionally unstarted.
+- `Docs/WEB_COMPOSER.md` records the current Web composer implementation, React/Vite source workspace, security boundary, packaging decision, and Phase 4 status.
+- Phase 4 has an initial React + TypeScript + Vite `WebComposer` workspace that regenerates the bundled Web composer assets while keeping Xcode builds independent of Node. Web agent planner work remains intentionally unstarted.
 
 ## Development Principles
 
@@ -69,8 +69,9 @@ Phase 1 has started with the smallest stable contract surface:
    - Keep provider validation and connection-test diagnostics clear without leaking secrets.
    - Add more explicit permission/status indicators for shortcut and app-anchor behavior.
 
-4. Start Phase 4 Web composer engineering.
-   - Introduce a React + TypeScript + Vite source workspace for the existing Web composer body.
+4. Continue Phase 4 Web composer engineering.
+   - Keep the React + TypeScript + Vite `WebComposer` source workspace aligned with the existing Web composer body.
+   - Treat the repository as a gradual monorepo: keep current macOS paths stable, add a top-level Web composer workspace, and defer broader `apps/`/`packages/` reshuffling until Windows work has real shape.
    - Keep the production output as bundled local static assets loaded by the current `WKWebView` host.
    - Keep Xcode app builds independent of `npm install`, network access, or frontend dev servers.
    - Keep Web-to-native calls behind `InputoNativeBridgeHost` / `InputoNativeBridgeMessageHandling`.

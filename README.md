@@ -36,7 +36,7 @@ Cross-platform contracts live in `Contracts/inputo.v1.schema.json`. The future W
 - `Docs/HANDOVER.md`: concise project state for future conversations or contributors.
 - `Docs/HANDOVER_WEB_UI_DISCUSSION.md`: handover prompt for Phase 4 Web composer engineering and later Web UI discussions.
 - `Docs/NATIVE_EXECUTOR_CONTRACT.md`: Phase 0/1 native executor contract status, DTOs, tool registry, and bridge boundary.
-- `Docs/WEB_COMPOSER.md`: current WKWebView composer body implementation, security boundary, packaging, and Phase 3 status.
+- `Docs/WEB_COMPOSER.md`: current WKWebView composer body implementation, React/Vite source workspace, security boundary, and packaging model.
 - `Docs/WEB_UI_ARCHITECTURE.md`: planned web-agent/native-executor architecture, bridge boundary, streaming model, and tool ecosystem direction.
 
 ## Project Layout
@@ -44,6 +44,7 @@ Cross-platform contracts live in `Contracts/inputo.v1.schema.json`. The future W
 - `Inputo.xcodeproj`: thin macOS app target.
 - `Inputo/App`: app lifecycle, window hosting, and menu bar shell.
 - `InputoModules`: local Swift package for product modules.
+- `WebComposer`: React, TypeScript, and Vite source workspace that regenerates the bundled Web composer assets.
 
 ## SwiftPM Package Targets
 

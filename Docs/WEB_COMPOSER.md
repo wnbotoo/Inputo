@@ -4,7 +4,7 @@ This document records the current Web composer body implementation and the bound
 
 ## Current Status
 
-The composer body is now rendered by a minimal bundled `WKWebView` surface.
+The composer body is rendered by a bundled `WKWebView` surface. Phase 4 now uses React, TypeScript, and Vite as the source workspace for the Web composer body while preserving the Phase 3 native host and runtime security boundary.
 
 Native still owns:
 
@@ -44,13 +44,31 @@ Static assets:
 
 SwiftPM bundles the assets through `InputoModules/Package.swift`.
 
+Web source workspace:
+
+- `WebComposer/package.json`
+- `WebComposer/vite.config.ts`
+- `WebComposer/src/App.tsx`
+- `WebComposer/src/bridge`
+- `WebComposer/src/state`
+- `WebComposer/src/styles/composer.css`
+- `WebComposer/src/__tests__`
+
 ## Packaging
 
-Phase 3 intentionally does not introduce React, TypeScript, Vite, Node, or a frontend build step.
+Phase 4 introduces React + TypeScript + Vite as source tooling for the Web composer. The app runtime still uses checked-in static HTML, CSS, and JavaScript assets loaded from the SwiftPM resource bundle.
 
-The current Web body is checked-in static HTML, CSS, and JavaScript. Xcode can build the app directly from repository contents without downloading dependencies or running a frontend compiler.
+Xcode and SwiftPM builds must remain independent of Node, `npm install`, network access, and frontend dev servers. Frontend builds are explicit developer or CI commands:
 
-Phase 4 should introduce React + TypeScript + Vite as source tooling for the Web composer, but the app runtime should remain bundled static assets. Generated static assets should be committed or otherwise made available so Xcode can build without network access.
+```bash
+cd WebComposer
+npm install
+npm run typecheck
+npm test
+npm run build
+```
+
+`npm run build` regenerates the production assets in `InputoModules/Sources/InputoComposerFeature/Resources/WebComposer`.
 
 ## Bridge Boundary
 
@@ -165,9 +183,9 @@ Manual runtime QA covered before moving to Phase 4:
 
 Keep broader panel sizing across displays and Spaces in the normal regression checklist.
 
-## Phase 4 Direction
+## Phase 4 Initial Landing
 
-Phase 4 should introduce a React + TypeScript + Vite source workspace for the Web composer, while keeping the same production runtime shape:
+Phase 4 adds a React + TypeScript + Vite source workspace for the Web composer while keeping the same production runtime shape:
 
 - bundled local static assets loaded by the existing `WKWebView` host
 - no React/Vite requirement in the Xcode app target
@@ -176,6 +194,7 @@ Phase 4 should introduce a React + TypeScript + Vite source workspace for the We
 - Web-to-native calls only through `InputoNativeBridgeHost` / `InputoNativeBridgeMessageHandling`
 - native-to-Web events only through `InputoBridgeEventEmitter`
 - native Settings, Jump anchors, panel behavior, provider networking, clipboard, Keychain, file grants, and permissions remain native
+- typed TypeScript bridge client and reducer tests cover request/response plumbing and streaming state transitions
 
 The richer Web agent planner remains a later phase.
 

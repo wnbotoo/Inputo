@@ -54,6 +54,29 @@ Future macOS code should follow current Apple platform conventions: SwiftUI for 
 - `InputoModules`: local Swift package for core, platform, and feature modules.
 - `Contracts`: language-neutral schemas for concepts that future Windows and native-core implementations must preserve.
 
+## Repository Direction
+
+Inputo should remain a monorepo as the product grows to include the SwiftUI macOS app, the shared Web composer/agent surface, and the future WinUI app. These parts are one product with shared contracts and privacy boundaries, not three unrelated applications.
+
+The preferred near-term layout is evolutionary:
+
+- keep the current macOS app and `InputoModules` paths stable while Phase 4 lands
+- add a dedicated `WebComposer` workspace for the React, TypeScript, and Vite source
+- add a future `Windows` directory when WinUI work begins
+- keep `Contracts` as the shared language-neutral boundary across Swift, TypeScript, and future C#
+- keep docs and verification guidance in the same repository so platform behavior stays aligned
+
+If the repository is reorganized later, a more standard shape is acceptable:
+
+- `apps/macos` for the SwiftUI/AppKit shell
+- `apps/windows` for the WinUI/WebView2 shell
+- `packages/web-composer` for the shared React surface
+- `packages/bridge-contracts-ts` for TypeScript bridge types if it becomes useful
+- `contracts` for language-neutral schemas, examples, and compatibility fixtures
+- `tools` for build, sync, and verification scripts
+
+Do not treat this as permission to tightly couple the builds. The macOS Xcode build and Swift package tests must keep working from checked-in sources without `npm install`, network access, or a frontend dev server. The Web workspace can regenerate bundled assets through an explicit developer or CI command, but Xcode should not require Node as part of its normal build.
+
 ## SwiftPM Package Targets
 
 - `InputoCore`: Foundation-only core contracts and provider logic. It owns provider configuration, transform recipes, OpenAI-compatible request/response handling, and prompt assembly.

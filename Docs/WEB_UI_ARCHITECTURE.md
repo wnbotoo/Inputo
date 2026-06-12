@@ -546,6 +546,22 @@ Later packaging, if a framework is introduced:
 - let CI verify generated assets match source
 - keep Xcode able to build from checked-in assets
 
+## Monorepo Direction
+
+The recommended repository model is a monorepo containing the SwiftUI macOS app, the shared Web composer/agent source, shared contracts, and the future WinUI app. This keeps bridge contract changes, Web asset generation, platform host updates, and documentation in one reviewable product change.
+
+The first Phase 4 step should be additive rather than a directory reshuffle:
+
+- keep the existing macOS paths stable
+- add a top-level `WebComposer` workspace for React, TypeScript, and Vite source
+- continue outputting production assets into the existing SwiftPM `Resources/WebComposer` bundle directory
+- keep `Contracts` as the shared source for language-neutral schemas and examples
+- add `Windows` only when the WinUI shell starts
+
+A later cleanup may move to `apps/macos`, `apps/windows`, `packages/web-composer`, `packages/bridge-contracts-ts`, `contracts`, and `tools`. That reorganization should happen after the Web workspace and Windows shell have real shape, not during the first React migration.
+
+Monorepo does not mean one coupled build graph. The macOS app must keep building without Node, dependency installation, network access, or a frontend dev server. Frontend builds should be explicit commands that regenerate checked-in bundled assets, and CI can verify that generated assets match the source.
+
 ## Frontend Stack Decision
 
 The recommended web stack is **React + TypeScript + Vite**.
@@ -745,6 +761,15 @@ Tasks:
 - add frontend unit tests where practical for bridge client behavior, reducer/state transitions, keyboard handling, and theme handling
 - keep the generated static output reviewable and CI-checkable against the React source
 - document frontend contribution patterns
+
+Initial landing:
+
+- `WebComposer` contains the React, TypeScript, and Vite source workspace for the composer body.
+- Vite builds deterministic `index.html`, `composer.css`, and `composer.js` files into `InputoModules/Sources/InputoComposerFeature/Resources/WebComposer`.
+- The typed TypeScript bridge client only posts allowlisted `tool.call` envelopes to the existing native `inputoNative` message handler.
+- React state mirrors the Phase 3 composer behavior, including snapshot loading, debounced draft/instruction sync, recipe selection, streaming deltas, cancellation, Clear, Copy, IME-aware Escape handling, Command-Return generation, focus handoff, and native theme updates.
+- Frontend tests cover bridge request/response routing, safe missing-bridge errors, native event routing, snapshot merging, and streaming state transitions.
+- The Web agent planner, `network.fetch`, connector tools, MCP tools, browser storage, and browser-side provider fetch remain out of scope.
 
 Exit criteria:
 
