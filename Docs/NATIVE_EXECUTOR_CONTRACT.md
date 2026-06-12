@@ -37,7 +37,7 @@ The first native executor contracts now live in `InputoCore`:
 - `AppState.nativeExecutorSnapshot(agentMode:)`
 - `AppState.cancelActiveGeneration()`
 
-The snapshot is an adapter over the current native state. It is not a bridge dispatcher and does not execute Web requests yet.
+The snapshot is an adapter over the current native state. Phase 2 adds the bridge dispatcher that reads this snapshot and executes allowlisted native tools.
 
 ## Default Native Tools
 
@@ -126,45 +126,56 @@ Phase 1 defines Codable DTOs but does not implement the bridge host. The intende
 
 Results use `tool.result` with either a typed payload or a display-safe `InputoNativeToolError`. Native-to-Web streaming uses `event` envelopes with names such as `llm.started`, `llm.delta`, `llm.completed`, `llm.failed`, and `llm.cancelled`.
 
-## Next Phase
+## Phase 2 Bridge Dispatcher
 
-Phase 2 should prove the contract without building the final Web UI:
+Phase 2 proves the contract without building the final Web UI:
 
-- implement a JSON bridge dispatcher around the typed envelopes
-- route a small allowlisted subset to `AppState`
-- add an event emitter abstraction
-- add cancellation tests by request id
-- add error redaction tests
-- add streaming delta coalescing tests
-- add JSON fixture examples under `Contracts/examples`
+- implements a JSON bridge dispatcher around the typed envelopes
+- routes allowlisted tools to `AppState` and native services
+- adds an event emitter abstraction
+- supports cancellation by request id
+- keeps provider and tool errors display-safe
+- coalesces streaming deltas before event emission
+- includes JSON fixture examples under `Contracts/examples`
 
 Only after this dispatcher works should Inputo add a minimal `WKWebView` host or React/Vite workspace.
 
-## Phase 2A Landing
+## Phase 2A-D Landing
 
-The first dispatcher slice now lives in `InputoComposerFeature`:
+The dispatcher now lives in `InputoComposerFeature`:
 
 - `Bridge/InputoNativeBridgeDispatcher.swift`
 - accepts version 1 `tool.call` JSON envelopes
 - returns version 1 `tool.result` JSON envelopes
-- implements `tools.list`
-- implements `composer.getState`
-- implements `settings.summary`
-- implements `permissions.status`
+- accepts version 1 `tool.cancel` JSON envelopes
+- checks tool mode, explicit user action, and per-call confirmation policy
+- implements `tools.list`, `composer.getState`, `settings.summary`, and `permissions.status`
+- implements composer tools: `composer.setDraft`, `composer.selectRecipe`, and `composer.clear`
+- implements LLM tools: `llm.chat`, `llm.stream`, and `llm.cancel`
+- implements clipboard copy through `clipboard.copyGeneratedOutput`
+- implements app-anchor list and activation through `appAnchors.list` and `appAnchors.activate`
+- implements native settings open through `settings.open`
+- implements `permissions.request` as a policy-checked status response; v1 does not request new screen-recording or accessibility permissions
+- implements grant-based file tools through `InputoMacPlatform.FileGrantService`
+- emits `llm.started`, `llm.delta`, `llm.completed`, `llm.failed`, and `llm.cancelled` events
 - rejects unsupported bridge versions
 - rejects unknown tools
-- rejects declared-but-unimplemented tools with a display-safe policy error
+- rejects policy violations with display-safe errors
+- rejects `network.fetch` until manifest-governed network policy is implemented
 
-The dispatcher is intentionally read-only. It does not execute LLM calls, write the clipboard, activate apps, open settings, access files, fetch network resources, or host Web UI.
+The dispatcher still does not host Web UI. It does not expose arbitrary native APIs, raw filesystem paths, API keys, security-scoped bookmark data, shell access, MCP execution, or connector execution.
 
-Read-only request fixtures live in `Contracts/examples/bridge-readonly-tool-calls.v1.json`.
+Fixtures live in:
+
+- `Contracts/examples/bridge-readonly-tool-calls.v1.json`
+- `Contracts/examples/bridge-side-effect-tool-calls.v1.json`
 
 ## Placeholder Implementation Expectations
 
 Placeholder contracts should be implemented in dependency order, not by starting a frontend first:
 
 1. Phase 2A: implement the JSON bridge dispatcher, `tools.list`, `composer.getState`, `settings.summary`, and `permissions.status`. Done.
-2. Phase 2B: wire existing native `AppState` actions as tools: composer draft/recipe/clear, `llm.chat`, `llm.cancel`, `clipboard.copyGeneratedOutput`, `appAnchors.list`, `appAnchors.activate`, and `settings.open`.
-3. Phase 2C: add event emission, request-id cancellation, streaming delta coalescing, and `llm.stream`.
-4. Phase 2D: implement grant-based file picker/read/write tools after bridge policy and confirmation UI exist.
-5. Later agent phases: implement manifest-governed `network.fetch`, connector tools, and MCP tools only after their review, credential, cancellation, and audit policies exist.
+2. Phase 2B: wire existing native `AppState` actions as tools: composer draft/recipe/clear, `llm.chat`, `llm.cancel`, `clipboard.copyGeneratedOutput`, `appAnchors.list`, `appAnchors.activate`, and `settings.open`. Done.
+3. Phase 2C: add event emission, request-id cancellation, streaming delta coalescing, and `llm.stream`. Done. Current provider calls still return whole completions, so `llm.stream` emits lifecycle events and a coalesced result delta until the provider client gains token streaming.
+4. Phase 2D: implement grant-based file picker/read/write tools after bridge policy and confirmation UI exist. Done at native executor level through `FileGrantService`; future Web UI still needs to render the confirmation surface before invoking these tools.
+5. Later agent phases: implement manifest-governed `network.fetch`, connector tools, and MCP tools only after their review, credential, cancellation, and audit policies exist. Not enabled; `network.fetch` is explicitly policy-denied.

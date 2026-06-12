@@ -30,9 +30,10 @@ Phase 1 has started with the smallest stable contract surface:
 - `InputoCore` owns Foundation-only executor contracts in `NativeExecutorContract.swift`.
 - Native tools are allowlisted and carry policy metadata: side-effect class, minimum agent mode, explicit-action requirement, per-call confirmation, cancellation support, and streaming support.
 - File tools are contract-only and grant-based: future reads/writes must go through native picker/save-panel grants rather than arbitrary Web-provided paths.
-- A first read-only JSON bridge dispatcher exists in `InputoComposerFeature` for `tools.list`, `composer.getState`, `settings.summary`, and `permissions.status`.
+- The JSON bridge dispatcher in `InputoComposerFeature` now executes the Phase 2A-D native executor tools: read-only snapshots, composer draft/recipe/clear, LLM chat/stream/cancel, clipboard copy, app anchors, settings open, permission status/request, and grant-based file picker/read/write.
+- `network.fetch` remains explicitly policy-denied until manifest-governed network policy exists.
 - `AppState.nativeExecutorSnapshot(agentMode:)` separates capability state from SwiftUI presentation enough for a future bridge host to read state without importing SwiftUI.
-- Tests cover contract encoding, conservative tool policy, provider-error mapping, snapshot privacy, bridge read-only dispatch, bridge error envelopes, and cancellation.
+- Tests cover contract encoding, conservative tool policy, provider-error mapping, snapshot privacy, bridge dispatch, bridge error envelopes, user-action policy, request-id cancellation, event emission, streaming delta coalescing, and grant-based file tools.
 - React, Vite, WKWebView hosting, and Web agent planner work remain intentionally unstarted.
 
 ## Development Principles
@@ -66,9 +67,9 @@ Phase 1 has started with the smallest stable contract surface:
 
 4. Build the bridge host before adding frontend tooling.
    - Keep the native shell and service boundaries intact.
-   - Expand the JSON dispatcher over the typed executor DTOs.
-   - Test allowlisting, safe errors, cancellation, and streaming event coalescing with fake services.
-   - Implement grant-based file tools only after dispatcher policy and confirmation UI are in place.
+   - Keep expanding the JSON dispatcher only through allowlisted tools and DTOs.
+   - Add a real bridge host boundary around the dispatcher before embedding Web UI.
+   - Keep `network.fetch`, connector tools, and MCP tools disabled until manifest/review/audit policy exists.
    - Do not start React/Vite or a WKWebView surface until the dispatcher is proven.
 
 ## Backlog

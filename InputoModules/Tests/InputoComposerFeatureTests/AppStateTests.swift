@@ -332,11 +332,11 @@ func nativeExecutorSnapshotMarksFileToolsAsUserGrantedInAssistedWorkflow() {
 
 @MainActor
 @Test
-func bridgeDispatcherReturnsToolsList() throws {
+func bridgeDispatcherReturnsToolsList() async throws {
     let harness = makeHarness()
     let dispatcher = InputoNativeBridgeDispatcher(appState: harness.state)
 
-    let response = try dispatch(
+    let response = try await dispatch(
         tool: .toolsList,
         id: "tools-request",
         dispatcher: dispatcher,
@@ -351,7 +351,7 @@ func bridgeDispatcherReturnsToolsList() throws {
 
 @MainActor
 @Test
-func bridgeDispatcherReturnsComposerSettingsAndPermissionsSnapshots() throws {
+func bridgeDispatcherReturnsComposerSettingsAndPermissionsSnapshots() async throws {
     let settings = AppSettings(
         provider: AIProviderConfig(
             baseURL: "https://provider.example",
@@ -368,25 +368,25 @@ func bridgeDispatcherReturnsComposerSettingsAndPermissionsSnapshots() throws {
     harness.state.outputText = "Generated"
     let dispatcher = InputoNativeBridgeDispatcher(appState: harness.state)
 
-    let composer = try dispatch(
+    let composer = try await dispatch(
         tool: .composerGetState,
         id: "composer-request",
         dispatcher: dispatcher,
         payloadType: InputoComposerSnapshot.self
     )
-    let settingsSummary = try dispatch(
+    let settingsSummary = try await dispatch(
         tool: .settingsSummary,
         id: "settings-request",
         dispatcher: dispatcher,
         payloadType: InputoSettingsSummary.self
     )
-    let permissions = try dispatch(
+    let permissions = try await dispatch(
         tool: .permissionsStatus,
         id: "permissions-request",
         dispatcher: dispatcher,
         payloadType: [InputoPermissionSnapshot].self
     )
-    let settingsJSON = try responseJSON(
+    let settingsJSON = try await responseJSON(
         tool: .settingsSummary,
         id: "settings-json-request",
         dispatcher: dispatcher
@@ -403,23 +403,23 @@ func bridgeDispatcherReturnsComposerSettingsAndPermissionsSnapshots() throws {
 
 @MainActor
 @Test
-func bridgeDispatcherRejectsUnsupportedVersionUnknownToolAndUnimplementedTool() throws {
+func bridgeDispatcherRejectsUnsupportedVersionUnknownToolAndPolicyViolations() async throws {
     let harness = makeHarness()
     let dispatcher = InputoNativeBridgeDispatcher(appState: harness.state)
 
-    let unsupportedVersion = try errorResponse(
+    let unsupportedVersion = try await errorResponse(
         """
         {"version":999,"id":"old-request","type":"tool.call","tool":"tools.list","payload":{}}
         """,
         dispatcher: dispatcher
     )
-    let unknownTool = try errorResponse(
+    let unknownTool = try await errorResponse(
         """
         {"version":1,"id":"unknown-request","type":"tool.call","tool":"native.runShell","payload":{}}
         """,
         dispatcher: dispatcher
     )
-    let unimplemented = try errorResponse(
+    let missingUserAction = try await errorResponse(
         try request(
             tool: .llmChat,
             id: "llm-request",
@@ -431,13 +431,308 @@ func bridgeDispatcherRejectsUnsupportedVersionUnknownToolAndUnimplementedTool() 
         ),
         dispatcher: dispatcher
     )
+    let deferredNetwork = try await errorResponse(
+        try request(
+            tool: .networkFetch,
+            id: "network-request",
+            context: .confirmedUserAction,
+            payload: InputoEmptyPayload()
+        ),
+        dispatcher: InputoNativeBridgeDispatcher(appState: harness.state, agentMode: .assistedWorkflow)
+    )
 
     #expect(unsupportedVersion.ok == false)
     #expect(unsupportedVersion.error?.code == .unsupportedVersion)
     #expect(unknownTool.ok == false)
     #expect(unknownTool.error?.code == .unknownTool)
-    #expect(unimplemented.ok == false)
-    #expect(unimplemented.error?.code == .policyViolation)
+    #expect(missingUserAction.ok == false)
+    #expect(missingUserAction.error?.code == .permissionDenied)
+    #expect(deferredNetwork.ok == false)
+    #expect(deferredNetwork.error?.code == .policyViolation)
+}
+
+@MainActor
+@Test
+func bridgeDispatcherRunsComposerClipboardSettingsAndAnchorTools() async throws {
+    let anchor = makeAnchor(id: "notes", appName: "Notes", pid: 42)
+    let harness = makeHarness()
+    harness.anchors.availableAnchors = [anchor]
+    harness.state.outputText = "Generated"
+    var didOpenSettings = false
+    harness.state.onRequestSettings = { didOpenSettings = true }
+    let dispatcher = InputoNativeBridgeDispatcher(appState: harness.state)
+
+    let draft = try await dispatch(
+        tool: .composerSetDraft,
+        id: "draft-request",
+        dispatcher: dispatcher,
+        payload: InputoComposerSetDraftRequest(draftText: "New draft"),
+        payloadType: InputoComposerSnapshot.self
+    )
+    let recipe = try await dispatch(
+        tool: .composerSelectRecipe,
+        id: "recipe-request",
+        dispatcher: dispatcher,
+        payload: InputoComposerSelectRecipeRequest(recipeID: "translate-en"),
+        payloadType: InputoComposerSnapshot.self
+    )
+    let copy = try await dispatch(
+        tool: .clipboardCopyGeneratedOutput,
+        id: "copy-request",
+        dispatcher: dispatcher,
+        context: .userInitiated,
+        payloadType: InputoComposerSnapshot.self
+    )
+    let anchors = try await dispatch(
+        tool: .appAnchorsList,
+        id: "anchors-request",
+        dispatcher: dispatcher,
+        payloadType: [InputoAppAnchorSnapshot].self
+    )
+    let activation = try await dispatch(
+        tool: .appAnchorsActivate,
+        id: "activate-request",
+        dispatcher: dispatcher,
+        context: .userInitiated,
+        payload: InputoAppAnchorActivateRequest(anchorID: anchor.id),
+        payloadType: [InputoAppAnchorSnapshot].self
+    )
+    let settings = try await dispatch(
+        tool: .settingsOpen,
+        id: "settings-open-request",
+        dispatcher: dispatcher,
+        context: .userInitiated,
+        payloadType: InputoSettingsSummary.self
+    )
+    let clear = try await dispatch(
+        tool: .composerClear,
+        id: "clear-request",
+        dispatcher: dispatcher,
+        context: .userInitiated,
+        payloadType: InputoComposerSnapshot.self
+    )
+
+    #expect(draft.payload?.draftText == "New draft")
+    #expect(recipe.payload?.selectedRecipeID == "translate-en")
+    #expect(copy.ok == true)
+    #expect(harness.clipboard.copiedTexts == ["Generated"])
+    #expect(anchors.payload?.first?.id == anchor.id)
+    #expect(activation.ok == true)
+    #expect(harness.anchors.activatedAnchors == [anchor])
+    #expect(settings.ok == true)
+    #expect(didOpenSettings == true)
+    #expect(clear.payload?.draftText.isEmpty == true)
+    #expect(clear.payload?.generatedOutput.isEmpty == true)
+}
+
+@MainActor
+@Test
+func bridgeDispatcherRunsLLMChatWithoutCopying() async throws {
+    let harness = makeHarness(providerResult: .success("Generated by bridge"))
+    let dispatcher = InputoNativeBridgeDispatcher(appState: harness.state)
+
+    let response = try await dispatch(
+        tool: .llmChat,
+        id: "llm-chat-request",
+        dispatcher: dispatcher,
+        context: .userInitiated,
+        payload: InputoLLMChatRequest(
+            draftText: "Draft",
+            instruction: "Make it warmer",
+            recipeID: "polish"
+        ),
+        payloadType: InputoLLMChatResponse.self
+    )
+
+    #expect(response.ok == true)
+    #expect(response.payload?.generatedOutput == "Generated by bridge")
+    #expect(harness.provider.requests.first?.text == "Draft")
+    #expect(harness.provider.requests.first?.instruction == "Make it warmer")
+    #expect(harness.clipboard.copiedTexts.isEmpty)
+}
+
+@MainActor
+@Test
+func bridgeDispatcherStreamsLLMEventsAndCoalescedDelta() async throws {
+    let harness = makeHarness(providerResult: .success("Generated stream output"))
+    var events: [String] = []
+    let emitter = InputoBridgeEventEmitter { data in
+        events.append(String(decoding: data, as: UTF8.self))
+    }
+    let dispatcher = InputoNativeBridgeDispatcher(appState: harness.state, eventEmitter: emitter)
+
+    let response = try await dispatch(
+        tool: .llmStream,
+        id: "llm-stream-request",
+        dispatcher: dispatcher,
+        context: .userInitiated,
+        payload: InputoLLMChatRequest(
+            draftText: "Draft",
+            instruction: "",
+            recipeID: "polish"
+        ),
+        payloadType: InputoLLMChatResponse.self
+    )
+
+    #expect(response.ok == true)
+    #expect(events.contains { $0.contains(#""event":"llm.started""#) })
+    #expect(events.contains { $0.contains(#""event":"llm.delta""#) && $0.contains("Generated stream output") })
+    #expect(events.contains { $0.contains(#""event":"llm.completed""#) })
+}
+
+@MainActor
+@Test
+func bridgeDispatcherCancelsTrackedLLMRequestByRequestID() async throws {
+    let settingsService = FakeSettingsService(settings: .default)
+    let apiKeyService = FakeAPIKeyService(apiKey: "test-key")
+    let clipboard = FakeClipboardService()
+    let anchors = FakeAnchorService()
+    let provider = ControlledTextTransformer()
+    let state = AppState(
+        services: AppStateServices(
+            settings: settingsService,
+            apiKeys: apiKeyService,
+            clipboard: clipboard,
+            anchors: anchors,
+            textTransformer: provider
+        )
+    )
+    let dispatcher = InputoNativeBridgeDispatcher(appState: state)
+    let llmJSON = try request(
+        tool: .llmChat,
+        id: "long-llm-request",
+        context: .userInitiated,
+        payload: InputoLLMChatRequest(draftText: "Draft", instruction: "", recipeID: "polish")
+    )
+
+    let llmTask = Task { @MainActor in
+        await dispatcher.dispatch(llmJSON)
+    }
+    await provider.waitForRequest()
+
+    let cancelJSON = InputoBridgeCancelEnvelope(
+        id: "cancel-request",
+        requestID: "long-llm-request",
+        reason: "test"
+    )
+    let cancelData = try JSONEncoder().encode(cancelJSON)
+    let cancelResponse = try JSONDecoder().decode(
+        InputoBridgeToolResultEnvelope<InputoToolCancelResponse>.self,
+        from: await dispatcher.dispatch(cancelData)
+    )
+
+    provider.complete(with: "Late result")
+    let llmResponse = try JSONDecoder().decode(
+        InputoBridgeToolResultEnvelope<InputoEmptyPayload>.self,
+        from: Data((await llmTask.value).utf8)
+    )
+
+    #expect(cancelResponse.payload?.didCancel == true)
+    #expect(llmResponse.ok == false)
+    #expect(llmResponse.error?.code == .cancelled)
+    #expect(state.outputText.isEmpty)
+}
+
+@MainActor
+@Test
+func bridgeDispatcherRunsGrantBasedFileToolsWithConfirmation() async throws {
+    let fileTools = FakeFileToolService()
+    let dispatcher = InputoNativeBridgeDispatcher(
+        appState: makeHarness().state,
+        agentMode: .assistedWorkflow,
+        fileTools: fileTools
+    )
+
+    let readable = try await dispatch(
+        tool: .filesPickReadable,
+        id: "pick-readable-request",
+        dispatcher: dispatcher,
+        context: .confirmedUserAction,
+        payload: InputoFilePickRequest(),
+        payloadType: InputoFilePickResponse.self
+    )
+    let read = try await dispatch(
+        tool: .filesReadText,
+        id: "read-file-request",
+        dispatcher: dispatcher,
+        context: .confirmedUserAction,
+        payload: InputoFileReadTextRequest(grantID: "read-grant"),
+        payloadType: InputoFileReadTextResponse.self
+    )
+    let writable = try await dispatch(
+        tool: .filesPickWritable,
+        id: "pick-writable-request",
+        dispatcher: dispatcher,
+        context: .confirmedUserAction,
+        payload: InputoFilePickRequest(suggestedFileName: "out.txt"),
+        payloadType: InputoFilePickResponse.self
+    )
+    let writeJSON = try await responseJSON(
+        tool: .filesWriteText,
+        id: "write-file-request",
+        dispatcher: dispatcher,
+        context: .confirmedUserAction,
+        payload: InputoFileWriteTextRequest(grantID: "write-grant", text: "Saved", overwrite: true)
+    )
+    let write = try JSONDecoder().decode(
+        InputoBridgeToolResultEnvelope<InputoFileWriteTextResponse>.self,
+        from: Data(writeJSON.utf8)
+    )
+
+    #expect(readable.payload?.grants.first?.id == "read-grant")
+    #expect(read.payload?.text == "File body")
+    #expect(writable.payload?.grants.first?.id == "write-grant")
+    #expect(write.payload?.byteCount == 5)
+    #expect(fileTools.writtenText == "Saved")
+    #expect(writeJSON.contains("/Users/") == false)
+    #expect(writeJSON.contains("path") == false)
+}
+
+@MainActor
+@Test
+func bridgeDispatcherRejectsFileToolsWithoutAssistedModeOrConfirmation() async throws {
+    let harness = makeHarness()
+    let manualDispatcher = InputoNativeBridgeDispatcher(appState: harness.state)
+    let assistedDispatcher = InputoNativeBridgeDispatcher(
+        appState: harness.state,
+        agentMode: .assistedWorkflow,
+        fileTools: FakeFileToolService()
+    )
+
+    let unavailableInManual = try await errorResponse(
+        try request(
+            tool: .filesReadText,
+            id: "manual-file-request",
+            context: .confirmedUserAction,
+            payload: InputoFileReadTextRequest(grantID: "read-grant")
+        ),
+        dispatcher: manualDispatcher
+    )
+    let missingConfirmation = try await errorResponse(
+        try request(
+            tool: .filesReadText,
+            id: "unconfirmed-file-request",
+            context: .userInitiated,
+            payload: InputoFileReadTextRequest(grantID: "read-grant")
+        ),
+        dispatcher: assistedDispatcher
+    )
+
+    #expect(unavailableInManual.error?.code == .permissionDenied)
+    #expect(missingConfirmation.error?.code == .permissionDenied)
+}
+
+@Test
+func streamDeltaCoalescerBuffersSmallDeltas() {
+    var coalescer = InputoStreamDeltaCoalescer(maxBufferedCharacters: 8)
+
+    #expect(coalescer.append("hel").isEmpty)
+    #expect(coalescer.append("lo").isEmpty)
+    let first = coalescer.append("!!!")
+    let final = coalescer.flush(isFinal: true)
+
+    #expect(first == [InputoStreamDelta(text: "hello!!!", sequence: 0, isFinal: false)])
+    #expect(final == nil)
 }
 
 @MainActor
@@ -478,19 +773,34 @@ private func dispatch<Payload: Codable & Equatable & Sendable>(
     tool: InputoNativeToolID,
     id: String,
     dispatcher: InputoNativeBridgeDispatcher,
+    context: InputoToolCallPolicyContext? = nil,
     payloadType _: Payload.Type
-) throws -> InputoBridgeToolResultEnvelope<Payload> {
-    let json = try request(tool: tool, id: id, payload: InputoEmptyPayload())
-    let response = dispatcher.dispatch(json)
+) async throws -> InputoBridgeToolResultEnvelope<Payload> {
+    let json = try request(tool: tool, id: id, context: context, payload: InputoEmptyPayload())
+    let response = await dispatcher.dispatch(json)
     return try JSONDecoder().decode(InputoBridgeToolResultEnvelope<Payload>.self, from: Data(response.utf8))
+}
+
+@MainActor
+private func dispatch<RequestPayload: Codable & Equatable & Sendable, ResponsePayload: Codable & Equatable & Sendable>(
+    tool: InputoNativeToolID,
+    id: String,
+    dispatcher: InputoNativeBridgeDispatcher,
+    context: InputoToolCallPolicyContext? = nil,
+    payload: RequestPayload,
+    payloadType _: ResponsePayload.Type
+) async throws -> InputoBridgeToolResultEnvelope<ResponsePayload> {
+    let json = try request(tool: tool, id: id, context: context, payload: payload)
+    let response = await dispatcher.dispatch(json)
+    return try JSONDecoder().decode(InputoBridgeToolResultEnvelope<ResponsePayload>.self, from: Data(response.utf8))
 }
 
 @MainActor
 private func errorResponse(
     _ json: String,
     dispatcher: InputoNativeBridgeDispatcher
-) throws -> InputoBridgeToolResultEnvelope<InputoEmptyPayload> {
-    let response = dispatcher.dispatch(json)
+) async throws -> InputoBridgeToolResultEnvelope<InputoEmptyPayload> {
+    let response = await dispatcher.dispatch(json)
     return try JSONDecoder().decode(
         InputoBridgeToolResultEnvelope<InputoEmptyPayload>.self,
         from: Data(response.utf8)
@@ -502,9 +812,10 @@ private func responseJSON<Payload: Codable & Equatable & Sendable>(
     tool: InputoNativeToolID,
     id: String,
     dispatcher: InputoNativeBridgeDispatcher,
+    context: InputoToolCallPolicyContext? = nil,
     payload: Payload
-) throws -> String {
-    dispatcher.dispatch(try request(tool: tool, id: id, payload: payload))
+) async throws -> String {
+    await dispatcher.dispatch(try request(tool: tool, id: id, context: context, payload: payload))
 }
 
 @MainActor
@@ -512,16 +823,17 @@ private func responseJSON(
     tool: InputoNativeToolID,
     id: String,
     dispatcher: InputoNativeBridgeDispatcher
-) throws -> String {
-    try responseJSON(tool: tool, id: id, dispatcher: dispatcher, payload: InputoEmptyPayload())
+) async throws -> String {
+    try await responseJSON(tool: tool, id: id, dispatcher: dispatcher, payload: InputoEmptyPayload())
 }
 
 private func request<Payload: Codable & Equatable & Sendable>(
     tool: InputoNativeToolID,
     id: String,
+    context: InputoToolCallPolicyContext? = nil,
     payload: Payload
 ) throws -> String {
-    let envelope = InputoBridgeToolCallEnvelope(id: id, tool: tool, payload: payload)
+    let envelope = InputoBridgeToolCallEnvelope(id: id, tool: tool, context: context, payload: payload)
     let data = try JSONEncoder().encode(envelope)
     return String(decoding: data, as: UTF8.self)
 }
@@ -634,6 +946,65 @@ private final class FakeAnchorService: AppAnchorServicing {
     func activate(_ anchor: AppAnchor) -> Bool {
         activatedAnchors.append(anchor)
         return activationResults[anchor.id] ?? true
+    }
+}
+
+@MainActor
+private final class FakeFileToolService: InputoFileToolServicing {
+    private(set) var writtenText: String?
+
+    func pickReadableFiles(_ request: InputoFilePickRequest) async throws -> InputoFilePickResponse {
+        InputoFilePickResponse(
+            grants: [
+                InputoFileGrantSnapshot(
+                    id: "read-grant",
+                    scope: .read,
+                    displayName: "draft.txt",
+                    contentType: "public.text",
+                    byteCount: 9,
+                    expiresAt: nil
+                )
+            ]
+        )
+    }
+
+    func readText(_ request: InputoFileReadTextRequest) async throws -> InputoFileReadTextResponse {
+        guard request.grantID == "read-grant" else {
+            throw InputoNativeToolError(code: .fileGrantInvalid, message: "Invalid read grant.")
+        }
+        return InputoFileReadTextResponse(
+            grantID: request.grantID,
+            displayName: "draft.txt",
+            text: "File body",
+            encoding: "utf-8"
+        )
+    }
+
+    func pickWritableFile(_ request: InputoFilePickRequest) async throws -> InputoFilePickResponse {
+        InputoFilePickResponse(
+            grants: [
+                InputoFileGrantSnapshot(
+                    id: "write-grant",
+                    scope: .write,
+                    displayName: request.suggestedFileName ?? "output.txt",
+                    contentType: "public.text",
+                    byteCount: nil,
+                    expiresAt: nil
+                )
+            ]
+        )
+    }
+
+    func writeText(_ request: InputoFileWriteTextRequest) async throws -> InputoFileWriteTextResponse {
+        guard request.grantID == "write-grant" else {
+            throw InputoNativeToolError(code: .fileGrantInvalid, message: "Invalid write grant.")
+        }
+        writtenText = request.text
+        return InputoFileWriteTextResponse(
+            grantID: request.grantID,
+            displayName: "output.txt",
+            byteCount: request.text.utf8.count
+        )
     }
 }
 

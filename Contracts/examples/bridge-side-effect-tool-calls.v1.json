@@ -1,0 +1,67 @@
+[
+  {
+    "version": 1,
+    "id": "draft-request",
+    "type": "tool.call",
+    "tool": "composer.setDraft",
+    "payload": {
+      "draftText": "Text to transform"
+    }
+  },
+  {
+    "version": 1,
+    "id": "llm-request",
+    "type": "tool.call",
+    "tool": "llm.chat",
+    "context": {
+      "userAction": true,
+      "confirmed": false
+    },
+    "payload": {
+      "draftText": "Text to transform",
+      "instruction": "Make it clearer.",
+      "recipeID": "polish"
+    }
+  },
+  {
+    "version": 1,
+    "id": "copy-request",
+    "type": "tool.call",
+    "tool": "clipboard.copyGeneratedOutput",
+    "context": {
+      "userAction": true,
+      "confirmed": false
+    },
+    "payload": {}
+  },
+  {
+    "version": 1,
+    "id": "pick-readable-request",
+    "type": "tool.call",
+    "tool": "files.pickReadable",
+    "context": {
+      "userAction": true,
+      "confirmed": true
+    },
+    "payload": {
+      "allowedContentTypes": ["public.text"],
+      "allowsMultipleSelection": false,
+      "suggestedFileName": null
+    }
+  },
+  {
+    "version": 1,
+    "id": "read-file-request",
+    "type": "tool.call",
+    "tool": "files.readText",
+    "context": {
+      "userAction": true,
+      "confirmed": true
+    },
+    "payload": {
+      "grantID": "native-issued-grant-id",
+      "maxBytes": 1048576,
+      "encoding": "utf-8"
+    }
+  }
+]

@@ -686,10 +686,12 @@ This phase can be tested without `WKWebView` by sending JSON fixtures into the d
 Initial landing:
 
 - `InputoComposerFeature/Bridge/InputoNativeBridgeDispatcher.swift` accepts versioned `tool.call` JSON envelopes and returns `tool.result` envelopes.
-- The first dispatcher slice is read-only: `tools.list`, `composer.getState`, `settings.summary`, and `permissions.status`.
-- Unsupported versions, unknown tools, and declared-but-unimplemented tools return display-safe error envelopes.
-- Request fixtures live in `Contracts/examples/bridge-readonly-tool-calls.v1.json`.
-- Side-effecting tools, streaming, event emission, and request-id cancellation are still pending.
+- The dispatcher now executes Phase 2A-D native executor tools: read-only snapshots, composer draft/recipe/clear, LLM chat/stream/cancel, clipboard copy, app anchors, settings open, permission status/request, and grant-based file picker/read/write.
+- Side-effecting tools require policy context such as explicit user action and, where needed, per-call confirmation.
+- Unsupported versions, unknown tools, deferred network fetch, and policy violations return display-safe error envelopes.
+- Request fixtures live in `Contracts/examples/bridge-readonly-tool-calls.v1.json` and `Contracts/examples/bridge-side-effect-tool-calls.v1.json`.
+- Event emission, request-id cancellation, and streaming delta coalescing are covered by package tests.
+- `network.fetch`, connector tools, and MCP tools remain disabled until their manifest, review, credential, cancellation, and audit policies exist.
 
 ### Phase 3: Add Minimal WKWebView Host
 

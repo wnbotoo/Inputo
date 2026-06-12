@@ -34,6 +34,20 @@ public enum InputoBridgeMessageType: String, Codable, Equatable, Sendable {
     case toolReject = "tool.reject"
 }
 
+public struct InputoToolCallPolicyContext: Codable, Equatable, Sendable {
+    public var userAction: Bool
+    public var confirmed: Bool
+
+    public init(userAction: Bool = false, confirmed: Bool = false) {
+        self.userAction = userAction
+        self.confirmed = confirmed
+    }
+
+    public static let none = InputoToolCallPolicyContext()
+    public static let userInitiated = InputoToolCallPolicyContext(userAction: true, confirmed: false)
+    public static let confirmedUserAction = InputoToolCallPolicyContext(userAction: true, confirmed: true)
+}
+
 public enum InputoNativeToolID: String, Codable, CaseIterable, Identifiable, Equatable, Sendable {
     case composerGetState = "composer.getState"
     case composerSetDraft = "composer.setDraft"
@@ -436,6 +450,7 @@ public struct InputoBridgeToolCallEnvelope<Payload: Codable & Equatable & Sendab
     public var id: String
     public var type: InputoBridgeMessageType
     public var tool: InputoNativeToolID
+    public var context: InputoToolCallPolicyContext?
     public var payload: Payload
 
     public init(
@@ -443,12 +458,14 @@ public struct InputoBridgeToolCallEnvelope<Payload: Codable & Equatable & Sendab
         id: String,
         type: InputoBridgeMessageType = .toolCall,
         tool: InputoNativeToolID,
+        context: InputoToolCallPolicyContext? = nil,
         payload: Payload
     ) {
         self.version = version
         self.id = id
         self.type = type
         self.tool = tool
+        self.context = context
         self.payload = payload
     }
 }
@@ -554,11 +571,55 @@ public struct InputoLLMChatRequest: Codable, Equatable, Sendable {
     }
 }
 
+public struct InputoLLMChatResponse: Codable, Equatable, Sendable {
+    public var generatedOutput: String
+    public var composer: InputoComposerSnapshot
+
+    public init(generatedOutput: String, composer: InputoComposerSnapshot) {
+        self.generatedOutput = generatedOutput
+        self.composer = composer
+    }
+}
+
+public struct InputoToolCancelRequest: Codable, Equatable, Sendable {
+    public var requestID: String
+
+    public init(requestID: String) {
+        self.requestID = requestID
+    }
+}
+
+public struct InputoToolCancelResponse: Codable, Equatable, Sendable {
+    public var requestID: String
+    public var didCancel: Bool
+
+    public init(requestID: String, didCancel: Bool) {
+        self.requestID = requestID
+        self.didCancel = didCancel
+    }
+}
+
 public struct InputoAppAnchorActivateRequest: Codable, Equatable, Sendable {
     public var anchorID: String
 
     public init(anchorID: String) {
         self.anchorID = anchorID
+    }
+}
+
+public struct InputoPermissionRequest: Codable, Equatable, Sendable {
+    public var permissionID: InputoPermissionID
+
+    public init(permissionID: InputoPermissionID) {
+        self.permissionID = permissionID
+    }
+}
+
+public struct InputoPermissionResponse: Codable, Equatable, Sendable {
+    public var permission: InputoPermissionSnapshot
+
+    public init(permission: InputoPermissionSnapshot) {
+        self.permission = permission
     }
 }
 
