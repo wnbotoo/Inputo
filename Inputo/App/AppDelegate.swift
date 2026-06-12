@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var panelController: FloatingPanelController?
     private var statusBarController: StatusBarController?
     private var settingsWindowController: SettingsWindowController?
+    private var hideComposerObserver: NSObjectProtocol?
     private let hotKeyManager = HotKeyManager()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -19,6 +20,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.hideComposer(reset: false)
         }
         self.panelController = panelController
+        hideComposerObserver = NotificationCenter.default.addObserver(
+            forName: .inputoHideComposer,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.hideComposer(reset: false)
+            }
+        }
 
         statusBarController = StatusBarController(
             onShow: { [weak self] in self?.showComposer() },
@@ -43,6 +53,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         hotKeyManager.register(shortcut: appState.settings.hotKey)
         appState.refreshAnchors()
+    }
+
+    deinit {
+        if let hideComposerObserver {
+            NotificationCenter.default.removeObserver(hideComposerObserver)
+        }
     }
 
     private func toggleComposer() {

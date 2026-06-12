@@ -49,8 +49,11 @@ public struct InputoToolCallPolicyContext: Codable, Equatable, Sendable {
 }
 
 public enum InputoNativeToolID: String, Codable, CaseIterable, Identifiable, Equatable, Sendable {
+    case appHideComposer = "app.hideComposer"
+    case appSnapshot = "app.snapshot"
     case composerGetState = "composer.getState"
     case composerSetDraft = "composer.setDraft"
+    case composerSetInstruction = "composer.setInstruction"
     case composerSelectRecipe = "composer.selectRecipe"
     case composerClear = "composer.clear"
     case llmChat = "llm.chat"
@@ -131,6 +134,28 @@ public struct InputoNativeToolDescriptor: Codable, Equatable, Identifiable, Send
 public extension InputoNativeToolDescriptor {
     static let v1DefaultTools: [InputoNativeToolDescriptor] = [
         InputoNativeToolDescriptor(
+            id: .appHideComposer,
+            displayName: "Hide Composer",
+            description: "Hide the current native composer panel after an explicit user action.",
+            effect: .appActivation,
+            minimumAgentMode: .manualTransform,
+            requiresExplicitUserAction: true,
+            requiresPerCallConfirmation: false,
+            supportsCancellation: false,
+            streams: false
+        ),
+        InputoNativeToolDescriptor(
+            id: .appSnapshot,
+            displayName: "Get App Snapshot",
+            description: "Read the current native executor snapshot without secrets, paths, screenshots, or window titles.",
+            effect: .readState,
+            minimumAgentMode: .manualTransform,
+            requiresExplicitUserAction: false,
+            requiresPerCallConfirmation: false,
+            supportsCancellation: false,
+            streams: false
+        ),
+        InputoNativeToolDescriptor(
             id: .composerGetState,
             displayName: "Get Composer State",
             description: "Read the current transient composer state snapshot.",
@@ -145,6 +170,17 @@ public extension InputoNativeToolDescriptor {
             id: .composerSetDraft,
             displayName: "Set Draft",
             description: "Replace the current transient composer draft.",
+            effect: .writeTransientState,
+            minimumAgentMode: .manualTransform,
+            requiresExplicitUserAction: false,
+            requiresPerCallConfirmation: false,
+            supportsCancellation: false,
+            streams: false
+        ),
+        InputoNativeToolDescriptor(
+            id: .composerSetInstruction,
+            displayName: "Set Instruction",
+            description: "Replace the current transient composer instruction.",
             effect: .writeTransientState,
             minimumAgentMode: .manualTransform,
             requiresExplicitUserAction: false,
@@ -548,6 +584,14 @@ public struct InputoComposerSetDraftRequest: Codable, Equatable, Sendable {
 
     public init(draftText: String) {
         self.draftText = draftText
+    }
+}
+
+public struct InputoComposerSetInstructionRequest: Codable, Equatable, Sendable {
+    public var instruction: String
+
+    public init(instruction: String) {
+        self.instruction = instruction
     }
 }
 

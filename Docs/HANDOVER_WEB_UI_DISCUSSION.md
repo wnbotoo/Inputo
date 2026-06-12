@@ -1,6 +1,6 @@
-# Inputo Web UI Discussion Handover Prompt
+# Inputo Phase 4 Web UI Discussion Handover Prompt
 
-Copy this prompt into a new conversation when discussing the future hybrid web UI direction.
+Copy this prompt into a new conversation when discussing Phase 4 Web composer engineering, the React/TypeScript/Vite migration, or a later Web agent surface.
 
 ```text
 我们继续讨论 Inputo，仓库在 /Users/wnbot/Projects/Inputo。
@@ -10,6 +10,7 @@ Copy this prompt into a new conversation when discussing the future hybrid web U
 - Docs/ARCHITECTURE.md
 - Docs/DEVELOPMENT.md
 - Docs/HANDOVER.md
+- Docs/WEB_COMPOSER.md
 - Docs/HANDOVER_WEB_UI_DISCUSSION.md
 
 项目背景：
@@ -29,11 +30,15 @@ v1 隐私边界：
 - 产品代码在 `InputoModules` local SwiftPM package。
 - `InputoCore` 是 Foundation-only，包含 provider config、recipes、OpenAI-compatible request/response/prompt 逻辑。
 - `InputoMacPlatform` 负责 macOS services：Keychain、clipboard、hotkey、settings、app anchors。
-- `InputoComposerFeature` 负责当前 native composer/settings UI 和 feature orchestration。
+- `InputoComposerFeature` 负责当前 Web composer host/assets、native settings UI 和 feature orchestration。
 - `AppState` 已通过小 service protocols 做 dependency injection，并有 fake services 和单元测试。
 - Provider 调用已经跑通，app sandbox 已加 network client entitlement。
 - Settings 里有 neutral connection test，不再用翻译作为连通性测试。
-- 当前 composer 是 SwiftUI 单列紧凑布局：anchors、preview、preset/instruction、input、actions。
+- 当前 composer 是 native shell + bundled `WKWebView` body：native 保留 header、Jump anchors、Settings、panel behavior 和 platform services；Web body 渲染 preview、preset/instruction、input、actions。
+- Phase 3 使用 checked-in static HTML/CSS/JS，不使用 React、TypeScript、Vite、Node build step 或远程资源。
+- Phase 3 已完成 minimal WKWebView host 和关键人工 QA；Phase 4 的目标是引入 React + TypeScript + Vite 作为 Web composer 的 source workspace。
+- Web-to-native 只通过 `InputoNativeBridgeHost` / `InputoNativeBridgeMessageHandling`；native-to-Web events 通过 `InputoBridgeEventEmitter`。
+- Web 侧使用 non-persistent data store、bundled local static assets、restrictive CSP，并由 WK host 阻止 `http`/`https` 资源加载。
 
 架构规则：
 - 保持 Xcode app + local SwiftPM package 结构。
@@ -45,18 +50,18 @@ v1 隐私边界：
 - 遵循最新 Apple SwiftUI/AppKit 应用规范。
 
 这次新对话的目标：
-我们要讨论是否以及如何在当前 native 基础上接入 web UI。不是全量改成 web，也不是马上实现。倾向方向是 native shell + web-rendered product surfaces：
+我们要开始 Phase 4：把当前 minimal Web composer body 迁移到 React + TypeScript + Vite source workspace。不是全量改成 web，也不是移动 native settings / Jump anchors / platform services。当前方向仍是 native shell + web-rendered product surfaces：
 - native shell 继续负责菜单栏、快捷键、窗口、app anchors、Keychain、clipboard、sandbox/permissions。
 - Swift/Core/Platform 继续负责 provider、settings、privacy-sensitive services。
-- web UI 可能只渲染 composer，或者 composer + settings。
-- 如果使用 web，优先考虑 `WKWebView` 嵌入，并通过窄的 typed bridge 与 Swift 通信。
+- web UI 当前只渲染 composer body；settings 和 Jump anchors 仍保持 native。
+- React + TypeScript + Vite 只作为前端源码和本地开发工具；app runtime 仍加载 bundled local static assets，Xcode app target 仍保持薄且不依赖 dev server。
 
 请重点讨论：
-1. web UI 是否值得引入，以及相比纯 SwiftUI 的收益和代价。
-2. web UI 的边界：只做 composer，还是 composer + settings。
-3. frontend 技术栈选择：plain HTML/CSS/TS、React、Svelte、Solid、Tauri-like bundle 思路等。
-4. Swift-to-web bridge 设计：命令、事件、DTO、错误处理、测试策略。
-5. 打包和开发体验：静态资源是否提交、是否需要 Node build step、Xcode build 如何集成。
+1. React + TypeScript + Vite workspace 应放在哪里，如何输出到现有 `Resources/WebComposer`。
+2. 如何保持 Xcode 离线 build：不在 Xcode target 中运行 `npm install`，不依赖 dev server，不下载远程资源。
+3. Web UI 边界：Phase 4 继续只做 composer，settings 和 Jump anchors 仍保持 native。
+4. Swift-to-web bridge 的命令、事件、DTO、错误处理、测试策略如何继续收窄。
+5. 打包和开发体验：静态资源如何提交或生成，Node build step 如何不污染 Xcode app target。
 6. macOS 体验风险：启动速度、内存、键盘焦点、IME、accessibility、深浅色、窗口透明/毛玻璃。
 7. 开源社区角度：贡献门槛、review 复杂度、长期维护成本。
 8. 和未来 Windows 版本的关系：web UI 是否能复用，core/provider contracts 如何保持稳定。
@@ -70,7 +75,7 @@ v1 隐私边界：
 
 ## Discussion Bias
 
-The current bias is to finish and validate the native v0.1 flow before adding a web runtime. The web path is worth exploring for open-source contribution, faster UI iteration, and richer preview/dev tooling, but it should not weaken Inputo's native privacy and platform-service boundaries.
+The current bias is to add frontend source tooling only after the minimal bundled Web composer has proven the native/Web boundary. Phase 4 should improve maintainability and contributor ergonomics without weakening Inputo's native privacy and platform-service boundaries.
 
 ## Non-Goals For The Discussion
 

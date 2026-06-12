@@ -18,8 +18,8 @@ Inputo is a macOS-native MVP for a system-wide AI input source. It sits between 
 - v1 does not read window titles, capture screenshots, or request screen recording for app anchors.
 - API keys use Keychain on macOS.
 - Cross-platform contracts live in `Contracts/inputo.v1.schema.json`.
-- The product should first prove a native v0.1 loop before any web UI implementation.
-- Hybrid web UI can be discussed next, but the intended direction is native shell plus optional web-rendered product surfaces, not a full rewrite.
+- The product proved the initial native v0.1 loop before introducing Web.
+- The current hybrid direction is native shell plus a bundled Web composer body, not a full rewrite.
 
 ## Project Layout
 
@@ -28,11 +28,12 @@ Inputo is a macOS-native MVP for a system-wide AI input source. It sits between 
 - `InputoModules/Package.swift`: local SwiftPM package.
 - `InputoModules/Sources/InputoCore`: Foundation-only core DTOs, recipes, provider client.
 - `InputoModules/Sources/InputoMacPlatform`: Keychain, clipboard, hotkey, settings, app anchors.
-- `InputoModules/Sources/InputoComposerFeature`: composer UI, settings UI, feature state.
+- `InputoModules/Sources/InputoComposerFeature`: Web composer host/assets, settings UI, feature state.
 - `Contracts`: language-neutral shared schema.
 - `Docs/ARCHITECTURE.md`: architecture and boundaries.
 - `Docs/DEVELOPMENT.md`: roadmap, todo list, verification, manual QA.
-- `Docs/HANDOVER_WEB_UI_DISCUSSION.md`: prompt for a new conversation about the hybrid web UI direction.
+- `Docs/WEB_COMPOSER.md`: current WKWebView composer body implementation, security boundary, packaging, and Phase 3 status.
+- `Docs/HANDOVER_WEB_UI_DISCUSSION.md`: prompt for a new conversation about future Web UI direction.
 
 ## Recent Work
 
@@ -46,11 +47,12 @@ Inputo is a macOS-native MVP for a system-wide AI input source. It sits between 
 - Added macOS app sandbox network client entitlement so provider calls can work from the app.
 - Replaced translation-based connection testing with a neutral "ping/ok" provider test.
 - Stabilized settings window sizing by using explicit `NSHostingController` sizing.
-- Tightened the composer UI into a compact single-column panel:
-  - top app header and horizontal app anchors;
-  - preview above input;
-  - preset and instruction controls between preview and input;
-  - explicit Copy button only for clipboard writes.
+- Landed a minimal bundled `WKWebView` composer body:
+  - native keeps the top app header, horizontal app anchors, Settings, panel behavior, and platform services;
+  - Web renders preview, preset/instruction controls, draft input, and composer actions;
+  - Web-to-native messages go through `InputoNativeBridgeHost`;
+  - native-to-Web events go through `InputoBridgeEventEmitter`;
+  - Web uses a non-persistent data store and bundled local static assets only.
 
 ## Known State
 
@@ -58,8 +60,8 @@ Inputo is a macOS-native MVP for a system-wide AI input source. It sits between 
 - `xcodebuild -project Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build` passes.
 - A configured OpenAI-compatible provider can complete at least one real text transform in local use.
 - Settings includes provider config, API key editing, neutral connection test, hotkey recording, custom presets, and privacy status.
-- Composer UI is still native SwiftUI.
-- There is no committed Windows project and no web UI implementation yet.
+- Composer body is now Web-rendered inside the native shell.
+- React, TypeScript, Vite, Windows, and the Web agent planner are not implemented yet.
 - Localization has not started; most UI strings are English.
 
 ## Important Constraints
@@ -71,19 +73,17 @@ Inputo is a macOS-native MVP for a system-wide AI input source. It sits between 
 - Do not request screen recording permission for v1 app anchors.
 - Do not read or display window titles for v1 app anchors.
 - Treat generated `.build`, `.swiftpm`, DerivedData, and `xcuserdata` as untracked local state.
-- Any future web UI should communicate with Swift through narrow, typed bridge commands instead of arbitrary native access.
+- Web UI must communicate with Swift through narrow, typed bridge commands instead of arbitrary native access.
 
 ## Suggested Next Slice
 
-Discuss and document the hybrid web UI direction before implementing it:
+Start Phase 4: add a React + TypeScript + Vite source workspace for the existing Web composer body.
 
-1. Decide whether web UI is for composer only or composer plus settings.
-2. Decide whether to use `WKWebView` with static bundled assets or a frontend workspace with a build step.
-3. Define the Swift-to-web bridge commands and data models.
-4. Decide how the bridge preserves v1 privacy constraints.
-5. Evaluate keyboard focus, IME behavior, accessibility, startup latency, and open-source contributor ergonomics.
-
-Keep implementation paused until the architecture and tradeoffs are clear.
+1. Keep the existing `WKWebView` host and native shell.
+2. Emit bundled local static assets for production and keep Xcode builds independent of frontend dependency installation.
+3. Preserve the current bridge boundary: Web-to-native through `InputoNativeBridgeHost` / `InputoNativeBridgeMessageHandling`, native-to-Web through `InputoBridgeEventEmitter`.
+4. Port the accepted Phase 3 composer behavior into React without enabling WebView networking, browser storage, automatic paste, screenshots, window titles, MCP/tools, or a Web agent planner.
+5. Keep Settings, Jump anchors, panel behavior, provider networking, clipboard, Keychain, file grants, and permissions native.
 
 ## Handoff Prompt
 
@@ -99,9 +99,9 @@ Current state:
 - Product code lives in `InputoModules`.
 - `AppState` already uses small service protocols with live and fake services.
 - Provider validation, request-shape tests, error redaction, cancellation, neutral connection testing, and macOS network entitlement are in place.
-- The native composer is compact and single-column: anchors, preview, preset/instruction, input, actions.
+- Composer is a native shell with native header and Jump anchors plus a bundled `WKWebView` body for preview, preset/instruction, input, and actions.
 - Settings window sizing has been stabilized.
-- The next discussion is about whether and how to add a hybrid web UI later, while keeping native shell and platform services.
+- Phase 4 should add React, TypeScript, and Vite as frontend source tooling while keeping bundled local assets as the app runtime. Windows and the Web agent planner are not implemented yet.
 
 Architecture rules:
 - Use the existing Xcode app + local SwiftPM package structure.
@@ -109,11 +109,11 @@ Architecture rules:
 - Product code lives in `InputoModules`.
 - `InputoCore` must stay Foundation-only and cross-platform-friendly.
 - `InputoMacPlatform` owns macOS services.
-- `InputoComposerFeature` owns composer/settings UI and feature orchestration for now.
+- `InputoComposerFeature` owns the Web composer host/assets, native settings UI, and feature orchestration for now.
 - No CocoaPods, Carthage, XcodeGen, or project generators.
 - Follow current Apple SwiftUI/AppKit conventions.
 
-Please read README.md, Docs/ARCHITECTURE.md, Docs/DEVELOPMENT.md, Docs/HANDOVER.md, and Docs/HANDOVER_WEB_UI_DISCUSSION.md first. Then inspect relevant code before making changes.
+Please read README.md, Docs/ARCHITECTURE.md, Docs/DEVELOPMENT.md, Docs/HANDOVER.md, Docs/WEB_COMPOSER.md, and Docs/HANDOVER_WEB_UI_DISCUSSION.md first. Then inspect relevant code before making changes.
 
 For implementation changes, verify with:
 `swift test --package-path InputoModules`

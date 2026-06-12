@@ -117,6 +117,11 @@ public final class InputoNativeBridgeDispatcher {
         }
 
         switch toolID {
+        case .appHideComposer:
+            NotificationCenter.default.post(name: .inputoHideComposer, object: nil)
+            return success(id: requestID, payload: appState.nativeExecutorSnapshot(agentMode: agentMode).composer)
+        case .appSnapshot:
+            return success(id: requestID, payload: appState.nativeExecutorSnapshot(agentMode: agentMode))
         case .toolsList:
             return success(id: requestID, payload: appState.nativeExecutorSnapshot(agentMode: agentMode).tools)
         case .composerGetState:
@@ -127,6 +132,8 @@ public final class InputoNativeBridgeDispatcher {
             return success(id: requestID, payload: appState.nativeExecutorSnapshot(agentMode: agentMode).permissions)
         case .composerSetDraft:
             return handleComposerSetDraft(data, id: requestID)
+        case .composerSetInstruction:
+            return handleComposerSetInstruction(data, id: requestID)
         case .composerSelectRecipe:
             return handleComposerSelectRecipe(data, id: requestID)
         case .composerClear:
@@ -236,6 +243,17 @@ public final class InputoNativeBridgeDispatcher {
         do {
             let request = try decodePayload(InputoComposerSetDraftRequest.self, from: data)
             appState.inputText = request.draftText
+            appState.errorMessage = nil
+            return success(id: id, payload: appState.nativeExecutorSnapshot(agentMode: agentMode).composer)
+        } catch {
+            return invalidPayload(id: id, field: "payload")
+        }
+    }
+
+    private func handleComposerSetInstruction(_ data: Data, id: String) -> Data {
+        do {
+            let request = try decodePayload(InputoComposerSetInstructionRequest.self, from: data)
+            appState.instruction = request.instruction
             appState.errorMessage = nil
             return success(id: id, payload: appState.nativeExecutorSnapshot(agentMode: agentMode).composer)
         } catch {

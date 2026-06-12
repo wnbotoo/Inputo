@@ -69,6 +69,7 @@ func nativeExecutorDefaultToolsAreConservativeInManualMode() throws {
     #expect(toolIDs == Set(InputoNativeToolID.allCases))
     #expect(try #require(tools.first { $0.id == .llmStream }) .streams == true)
     #expect(try #require(tools.first { $0.id == .llmChat }) .supportsCancellation == true)
+    #expect(try #require(tools.first { $0.id == .appHideComposer }) .requiresExplicitUserAction == true)
     #expect(try #require(tools.first { $0.id == .clipboardCopyGeneratedOutput }) .requiresExplicitUserAction == true)
     #expect(try #require(tools.first { $0.id == .appAnchorsActivate }) .requiresExplicitUserAction == true)
     #expect(try #require(tools.first { $0.id == .filesPickReadable }) .isAvailable(in: .manualTransform) == false)

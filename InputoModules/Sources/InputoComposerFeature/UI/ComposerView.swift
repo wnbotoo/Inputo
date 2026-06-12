@@ -3,7 +3,6 @@ import SwiftUI
 
 public struct ComposerView: View {
     @ObservedObject public var appState: AppState
-    @FocusState private var focusedField: ComposerFocusField?
 
     public init(appState: AppState) {
         self.appState = appState
@@ -20,11 +19,7 @@ public struct ComposerView: View {
                     ProviderSetupBanner(appState: appState, message: providerSetupMessage)
                 }
                 AnchorBarView(appState: appState)
-                PreviewPanel(appState: appState)
-                    .frame(minHeight: 82, idealHeight: 96, maxHeight: 116)
-                TransformControlsView(appState: appState, focusedField: $focusedField)
-                ComposerInputPanel(appState: appState, focusedField: $focusedField)
-                    .frame(maxHeight: .infinity)
+                composerBody
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .padding(.horizontal, 12)
@@ -32,8 +27,15 @@ public struct ComposerView: View {
             .padding(.bottom, 10)
             .ignoresSafeArea(.container, edges: .top)
         }
-        .onReceive(NotificationCenter.default.publisher(for: .inputoFocusComposer)) { _ in
-            focusedField = .input
+    }
+
+    @ViewBuilder
+    private var composerBody: some View {
+        if InputoWebComposerAssets.areBundled {
+            InputoWebComposerView(appState: appState)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            MissingWebComposerAssetsView()
         }
     }
 
@@ -79,30 +81,6 @@ private struct ProviderSetupBanner: View {
         }
         .padding(10)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
-    }
-}
-
-private struct TransformControlsView: View {
-    @ObservedObject var appState: AppState
-    var focusedField: FocusState<ComposerFocusField?>.Binding
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Picker("Preset", selection: $appState.selectedRecipeID) {
-                ForEach(appState.recipes) { recipe in
-                    Text(recipe.name).tag(recipe.id)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .help("Preset")
-
-            TextField("Instruction", text: $appState.instruction)
-                .textFieldStyle(.roundedBorder)
-                .focused(focusedField, equals: .instruction)
-        }
-        .padding(.horizontal, 8)
-        .controlSize(.small)
     }
 }
 
@@ -164,138 +142,13 @@ private struct AnchorBarView: View {
     }
 }
 
-private struct PreviewPanel: View {
-    @ObservedObject var appState: AppState
-
+private struct MissingWebComposerAssetsView: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Label("Preview", systemImage: "doc.text.magnifyingglass")
-                    .font(.caption.weight(.semibold))
-                Spacer()
-                Button {
-                    appState.copyOutput()
-                } label: {
-                    Label("Copy", systemImage: "doc.on.doc")
-                }
-                .controlSize(.small)
-                .disabled(appState.outputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
-
-            ZStack(alignment: .topLeading) {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(nsColor: .textBackgroundColor).opacity(0.72))
-
-                if appState.isGenerating {
-                    HStack(spacing: 10) {
-                        ProgressView()
-                        Text("Generating...")
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(14)
-                } else if appState.outputText.isEmpty {
-                    Text("No preview yet.")
-                        .foregroundStyle(.secondary)
-                        .padding(14)
-                } else {
-                    ScrollView {
-                        Text(appState.outputText)
-                            .font(.body)
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(10)
-                    }
-                }
-            }
-            .frame(maxHeight: .infinity)
-
-            if let error = appState.errorMessage {
-                Label(error, systemImage: "exclamationmark.triangle")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-                    .lineLimit(1)
-            } else if let status = appState.statusMessage {
-                Label(status, systemImage: "checkmark.circle")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-        }
-        .padding(8)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+        ContentUnavailableView(
+            "Composer assets missing",
+            systemImage: "exclamationmark.triangle",
+            description: Text("The bundled WebComposer resources were not found.")
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-}
-
-private struct ComposerInputPanel: View {
-    @ObservedObject var appState: AppState
-    var focusedField: FocusState<ComposerFocusField?>.Binding
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ZStack(alignment: .topLeading) {
-                TextEditor(text: $appState.inputText)
-                    .font(.body)
-                    .scrollContentBackground(.hidden)
-                    .focused(focusedField, equals: .input)
-                    .padding(6)
-                    .background(Color(nsColor: .textBackgroundColor).opacity(0.72), in: RoundedRectangle(cornerRadius: 8))
-
-                if appState.inputText.isEmpty {
-                    Text("Paste or type the text you want Inputo to transform...")
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 12)
-                        .allowsHitTesting(false)
-                }
-            }
-            .frame(minHeight: 78, maxHeight: .infinity)
-
-            HStack {
-                Button {
-                } label: {
-                    Image(systemName: "photo")
-                }
-                .disabled(true)
-                .controlSize(.small)
-                .help("Image input is reserved for a later version")
-
-                Button {
-                } label: {
-                    Image(systemName: "paperclip")
-                }
-                .disabled(true)
-                .controlSize(.small)
-                .help("Attachments are reserved for a later version")
-
-                Spacer()
-
-                Button {
-                    appState.resetSession()
-                } label: {
-                    Label("Clear", systemImage: "xmark.circle")
-                }
-                .controlSize(.small)
-
-                Button {
-                    appState.generate()
-                } label: {
-                    if appState.isGenerating {
-                        Label("Generating", systemImage: "hourglass")
-                    } else {
-                        Label("Generate", systemImage: "wand.and.sparkles")
-                    }
-                }
-                .keyboardShortcut(.return, modifiers: [.command])
-                .controlSize(.small)
-                .disabled(appState.isGenerating || appState.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
-        }
-        .padding(8)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
-    }
-}
-
-enum ComposerFocusField: Hashable {
-    case instruction
-    case input
 }

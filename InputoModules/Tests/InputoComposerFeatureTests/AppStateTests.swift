@@ -386,9 +386,20 @@ func bridgeDispatcherReturnsComposerSettingsAndPermissionsSnapshots() async thro
         dispatcher: dispatcher,
         payloadType: [InputoPermissionSnapshot].self
     )
+    let appSnapshot = try await dispatch(
+        tool: .appSnapshot,
+        id: "app-snapshot-request",
+        dispatcher: dispatcher,
+        payloadType: InputoNativeExecutorSnapshot.self
+    )
     let settingsJSON = try await responseJSON(
         tool: .settingsSummary,
         id: "settings-json-request",
+        dispatcher: dispatcher
+    )
+    let appSnapshotJSON = try await responseJSON(
+        tool: .appSnapshot,
+        id: "app-snapshot-json-request",
         dispatcher: dispatcher
     )
 
@@ -397,8 +408,14 @@ func bridgeDispatcherReturnsComposerSettingsAndPermissionsSnapshots() async thro
     #expect(settingsSummary.payload?.provider.hasAPIKey == true)
     #expect(settingsSummary.payload?.provider.endpointPreview == "https://provider.example/v1/chat/completions")
     #expect(permissions.payload?.contains { $0.id == .screenRecording && $0.state == .notRequested } == true)
+    #expect(appSnapshot.payload?.composer.draftText == "Draft")
+    #expect(appSnapshot.payload?.recipes.map(\.id).contains("polish") == true)
+    #expect(appSnapshot.payload?.tools.map(\.id).contains(.appSnapshot) == true)
     #expect(settingsJSON.contains("stored-api-key") == false)
     #expect(settingsJSON.contains("header-secret") == false)
+    #expect(appSnapshotJSON.contains("stored-api-key") == false)
+    #expect(appSnapshotJSON.contains("header-secret") == false)
+    #expect(appSnapshotJSON.contains("windowTitle") == false)
 }
 
 @MainActor
@@ -459,7 +476,18 @@ func bridgeDispatcherRunsComposerClipboardSettingsAndAnchorTools() async throws 
     harness.anchors.availableAnchors = [anchor]
     harness.state.outputText = "Generated"
     var didOpenSettings = false
+    let didRequestHide = ThreadSafeFlag()
     harness.state.onRequestSettings = { didOpenSettings = true }
+    let hideObserver = NotificationCenter.default.addObserver(
+        forName: .inputoHideComposer,
+        object: nil,
+        queue: nil
+    ) { _ in
+        didRequestHide.set()
+    }
+    defer {
+        NotificationCenter.default.removeObserver(hideObserver)
+    }
     let dispatcher = InputoNativeBridgeDispatcher(appState: harness.state)
 
     let draft = try await dispatch(
@@ -467,6 +495,13 @@ func bridgeDispatcherRunsComposerClipboardSettingsAndAnchorTools() async throws 
         id: "draft-request",
         dispatcher: dispatcher,
         payload: InputoComposerSetDraftRequest(draftText: "New draft"),
+        payloadType: InputoComposerSnapshot.self
+    )
+    let instruction = try await dispatch(
+        tool: .composerSetInstruction,
+        id: "instruction-request",
+        dispatcher: dispatcher,
+        payload: InputoComposerSetInstructionRequest(instruction: "New instruction"),
         payloadType: InputoComposerSnapshot.self
     )
     let recipe = try await dispatch(
@@ -504,6 +539,13 @@ func bridgeDispatcherRunsComposerClipboardSettingsAndAnchorTools() async throws 
         context: .userInitiated,
         payloadType: InputoSettingsSummary.self
     )
+    let hide = try await dispatch(
+        tool: .appHideComposer,
+        id: "hide-composer-request",
+        dispatcher: dispatcher,
+        context: .userInitiated,
+        payloadType: InputoComposerSnapshot.self
+    )
     let clear = try await dispatch(
         tool: .composerClear,
         id: "clear-request",
@@ -513,6 +555,7 @@ func bridgeDispatcherRunsComposerClipboardSettingsAndAnchorTools() async throws 
     )
 
     #expect(draft.payload?.draftText == "New draft")
+    #expect(instruction.payload?.instruction == "New instruction")
     #expect(recipe.payload?.selectedRecipeID == "translate-en")
     #expect(copy.ok == true)
     #expect(harness.clipboard.copiedTexts == ["Generated"])
@@ -521,6 +564,8 @@ func bridgeDispatcherRunsComposerClipboardSettingsAndAnchorTools() async throws 
     #expect(harness.anchors.activatedAnchors == [anchor])
     #expect(settings.ok == true)
     #expect(didOpenSettings == true)
+    #expect(hide.ok == true)
+    #expect(didRequestHide.value == true)
     #expect(clear.payload?.draftText.isEmpty == true)
     #expect(clear.payload?.generatedOutput.isEmpty == true)
 }
@@ -834,6 +879,38 @@ func streamDeltaCoalescerBuffersSmallDeltas() {
     #expect(final == nil)
 }
 
+@Test
+func webComposerAssetsAreBundledAndRestrictNetwork() throws {
+    let indexURL = try #require(InputoWebComposerAssets.indexURL)
+    let html = try String(contentsOf: indexURL, encoding: .utf8)
+    let assetDirectory = try #require(InputoWebComposerAssets.readAccessURL)
+    let scriptURL = assetDirectory.appendingPathComponent("composer.js")
+    let styleURL = assetDirectory.appendingPathComponent("composer.css")
+    let script = try String(contentsOf: scriptURL, encoding: .utf8)
+    let style = try String(contentsOf: styleURL, encoding: .utf8)
+
+    #expect(InputoWebComposerAssets.areBundled == true)
+    #expect(html.contains("script-src 'self'"))
+    #expect(html.contains("connect-src 'none'"))
+    #expect(html.contains("object-src 'none'"))
+    #expect(html.contains("Inputo Composer"))
+    #expect(InputoWebComposerAssets.remoteContentBlockRuleList.contains(#""url-filter": "https?://.*""#))
+    #expect(InputoWebComposerAssets.remoteContentBlockRuleList.contains(#""type": "block""#))
+    #expect(script.contains("InputoNativeThemeSet"))
+    #expect(script.contains("COMPOSITION_ESCAPE_GRACE_MS"))
+    #expect(script.contains("fetch(") == false)
+    #expect(script.contains("localStorage") == false)
+    #expect(script.contains("sessionStorage") == false)
+    #expect(script.contains("XMLHttpRequest") == false)
+    #expect(script.contains("WebSocket") == false)
+    #expect(script.contains(#""app.hideComposer""#))
+    #expect(style.contains("background: transparent !important;"))
+    #expect(style.contains("--panel: transparent;"))
+    #expect(style.contains("--field: transparent;"))
+    #expect(style.contains("--surface: rgb(222 230 236 / 0.18);"))
+    #expect(style.contains("appearance: none;"))
+}
+
 @MainActor
 @Test
 func cancelActiveGenerationCancelsInFlightProviderResult() async {
@@ -976,6 +1053,23 @@ private struct AppStateHarness {
     let clipboard: FakeClipboardService
     let anchors: FakeAnchorService
     let provider: FakeTextTransformer
+}
+
+private final class ThreadSafeFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storedValue = false
+
+    var value: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return storedValue
+    }
+
+    func set() {
+        lock.lock()
+        storedValue = true
+        lock.unlock()
+    }
 }
 
 @MainActor

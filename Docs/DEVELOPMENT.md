@@ -16,27 +16,29 @@ The app intentionally avoids automatic paste, input history, generated history, 
 - Provider configuration supports OpenAI-compatible chat completions endpoints, including base origins, `/v1`, and full `/v1/chat/completions` URLs.
 - The app sandbox includes the network client entitlement required for provider requests.
 - Settings has a neutral "Save & Test Connection" action that does not use translation as the smoke test.
-- The composer is a compact single-column native SwiftUI panel: target app anchors, preview, preset/instruction controls, input, and actions.
+- The composer is a compact single-column native shell with native header, native Jump anchors, and a bundled `WKWebView` body for preview, preset/instruction controls, input, and actions.
 - Settings window sizing has been stabilized with explicit SwiftUI/AppKit hosting dimensions.
 - Phase 1 native executor DTOs now exist in `InputoCore` for tool ids, tool descriptors, bridge envelopes, streaming events, cancellation, safe errors, grant-based file access payloads, permission snapshots, and native executor state snapshots.
 - `InputoComposerFeature.AppState` can now produce a typed native executor snapshot and expose explicit generation cancellation without moving product behavior into the Xcode app target.
 
 ## Phase 0/1 Status
 
-Phase 0 remains the native v0.1 baseline. The app still needs real-device/provider manual QA for the full transform, Copy, app-anchor, menu-bar, hotkey, multi-display, and full-screen Space loops before any web surface replaces native UI.
+Phase 0 remains the native v0.1 baseline. The app still needs ongoing real-device/provider regression QA for the full transform, Copy, app-anchor, menu-bar, hotkey, multi-display, and full-screen Space loops.
 
 Phase 1 has started with the smallest stable contract surface:
 
 - `InputoCore` owns Foundation-only executor contracts in `NativeExecutorContract.swift`.
 - Native tools are allowlisted and carry policy metadata: side-effect class, minimum agent mode, explicit-action requirement, per-call confirmation, cancellation support, and streaming support.
 - File tools are contract-only and grant-based: future reads/writes must go through native picker/save-panel grants rather than arbitrary Web-provided paths.
-- The JSON bridge dispatcher in `InputoComposerFeature` now executes the Phase 2A-D native executor tools: read-only snapshots, composer draft/recipe/clear, LLM chat/stream/cancel, clipboard copy, app anchors, settings open, permission status/request, and grant-based file picker/read/write.
+- The JSON bridge dispatcher in `InputoComposerFeature` now executes the Phase 2A-D native executor tools: app snapshot/hide, composer draft/instruction/recipe/clear, LLM chat/stream/cancel, clipboard copy, app anchors, settings open, permission status/request, and grant-based file picker/read/write.
 - `AIProviderClient.streamTransform` parses OpenAI-compatible SSE chunks, and `AppState.streamGenerate` updates native composer state incrementally for `llm.stream`.
-- `InputoNativeBridgeMessageHandling` and `InputoNativeBridgeHost` define the host-facing protocol that a future WKWebView adapter should call.
+- `InputoNativeBridgeMessageHandling` and `InputoNativeBridgeHost` define the host-facing protocol used by the WKWebView adapter.
 - `network.fetch` remains explicitly policy-denied until manifest-governed network policy exists.
 - `AppState.nativeExecutorSnapshot(agentMode:)` separates capability state from SwiftUI presentation enough for a future bridge host to read state without importing SwiftUI.
 - Tests cover contract encoding, conservative tool policy, provider-error mapping, snapshot privacy, bridge dispatch, bridge error envelopes, user-action policy, request-id cancellation, event emission, streaming delta coalescing, and grant-based file tools.
-- React, Vite, WKWebView hosting, and Web agent planner work remain intentionally unstarted.
+- Phase 3 now has a minimal `WKWebView` composer body host in `InputoComposerFeature` that loads bundled static assets, uses a non-persistent data store, restricts navigation to the asset bundle, routes Web-to-native messages through `InputoNativeBridgeHost`, and forwards native events through `InputoBridgeEventEmitter`.
+- `Docs/WEB_COMPOSER.md` records the current Web composer implementation, security boundary, packaging decision, Phase 3 manual QA coverage, and Phase 4 direction.
+- React, Vite, and Web agent planner work remain intentionally unstarted.
 
 ## Development Principles
 
@@ -67,19 +69,20 @@ Phase 1 has started with the smallest stable contract surface:
    - Keep provider validation and connection-test diagnostics clear without leaking secrets.
    - Add more explicit permission/status indicators for shortcut and app-anchor behavior.
 
-4. Build the bridge host before adding frontend tooling.
-   - Keep the native shell and service boundaries intact.
-   - Keep expanding the JSON dispatcher only through allowlisted tools and DTOs.
-   - Use the existing `InputoNativeBridgeMessageHandling` host boundary when embedding Web UI.
-   - Keep `network.fetch`, connector tools, and MCP tools disabled until manifest/review/audit policy exists.
-   - Do not start React/Vite or a WKWebView surface until the dispatcher is proven.
+4. Start Phase 4 Web composer engineering.
+   - Introduce a React + TypeScript + Vite source workspace for the existing Web composer body.
+   - Keep the production output as bundled local static assets loaded by the current `WKWebView` host.
+   - Keep Xcode app builds independent of `npm install`, network access, or frontend dev servers.
+   - Keep Web-to-native calls behind `InputoNativeBridgeHost` / `InputoNativeBridgeMessageHandling`.
+   - Keep native-to-Web events behind `InputoBridgeEventEmitter`.
+   - Port the accepted Phase 3 focus, IME, Escape, keyboard shortcut, dark-mode, streaming, and visual behavior without expanding Web privileges.
 
-5. Add the minimal WKWebView host as the next architecture slice.
-   - Keep the native SwiftUI composer available as fallback.
-   - Load only bundled local assets.
-   - Route Web-to-native JSON through `InputoNativeBridgeHost`.
-   - Route native events back to Web through the host adapter.
-   - Verify focus, IME, Escape, keyboard shortcuts, dark mode, and panel sizing before moving composer UI to Web.
+5. Preserve the native boundary while frontend tooling lands.
+   - Native keeps the shell, Settings, Jump anchors, panel behavior, app activation, Keychain, clipboard, provider networking, file grants, and permissions.
+   - WebView remains non-persistent, bundled-only, and network-blocked.
+   - Do not add browser storage for input/output history.
+   - Do not enable `network.fetch`, connector tools, MCP tools, or a Web agent planner during Phase 4.
+   - Keep panel sizing across displays and Spaces in regression QA.
 
 ## Backlog
 
@@ -93,13 +96,13 @@ Phase 1 has started with the smallest stable contract surface:
 - Add app icon and refined status-bar icon.
 - Add optional "copy and hide" command after the basic copy flow is proven.
 - Add optional "last target app" quick action once anchor tracking is stable.
-- Explore a `WKWebView` renderer for composer/settings after v0.1 is reliable.
+- Keep Settings native unless a later phase explicitly scopes a Web settings surface.
 - Add bridge contract tests if a web UI is introduced.
 
 ## Deferred Until After MVP
 
 - Windows WinUI 3 implementation.
-- Hybrid web UI implementation.
+- Full hybrid web UI implementation beyond the minimal composer host.
 - MCP connector execution.
 - Tool execution.
 - Automatic paste.

@@ -28,7 +28,10 @@ let package = Package(
                 "InputoCore",
                 "InputoMacPlatform"
             ],
-            path: "Sources/InputoComposerFeature"
+            path: "Sources/InputoComposerFeature",
+            resources: [
+                .copy("Resources/WebComposer")
+            ]
         ),
         .testTarget(
             name: "InputoCoreTests",

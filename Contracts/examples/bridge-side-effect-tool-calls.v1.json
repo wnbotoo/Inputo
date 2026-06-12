@@ -1,11 +1,31 @@
 [
   {
     "version": 1,
+    "id": "hide-composer-request",
+    "type": "tool.call",
+    "tool": "app.hideComposer",
+    "context": {
+      "userAction": true,
+      "confirmed": false
+    },
+    "payload": {}
+  },
+  {
+    "version": 1,
     "id": "draft-request",
     "type": "tool.call",
     "tool": "composer.setDraft",
     "payload": {
       "draftText": "Text to transform"
+    }
+  },
+  {
+    "version": 1,
+    "id": "instruction-request",
+    "type": "tool.call",
+    "tool": "composer.setInstruction",
+    "payload": {
+      "instruction": "Make it clearer."
     }
   },
   {

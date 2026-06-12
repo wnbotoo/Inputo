@@ -2,7 +2,7 @@
 
 This document records the Phase 0 and Phase 1 landing work for the planned web planner plus native executor architecture.
 
-Inputo has not started a React, Vite, or WKWebView implementation. The current goal is to make the native capability boundary explicit and testable while the native v0.1 app remains the primary product surface.
+Inputo now has a minimal bundled `WKWebView` composer body. React and Vite remain unstarted. The current goal is to keep the native capability boundary explicit and testable while Web renders only the composer body.
 
 ## Phase 0 Status
 
@@ -44,7 +44,10 @@ The snapshot is an adapter over the current native state. Phase 2 adds the bridg
 The initial native tool registry is allowlisted:
 
 - `composer.getState`
+- `app.hideComposer`
+- `app.snapshot`
 - `composer.setDraft`
+- `composer.setInstruction`
 - `composer.selectRecipe`
 - `composer.clear`
 - `llm.chat`
@@ -138,7 +141,7 @@ Phase 2 proves the contract without building the final Web UI:
 - coalesces streaming deltas before event emission
 - includes JSON fixture examples under `Contracts/examples`
 
-Only after this dispatcher works should Inputo add a minimal `WKWebView` host or React/Vite workspace.
+The minimal `WKWebView` host now exists and has completed the critical Phase 3 manual QA path. React/Vite source tooling belongs to Phase 4.
 
 ## Phase 2A-D Landing
 
@@ -149,8 +152,9 @@ The dispatcher now lives in `InputoComposerFeature`:
 - returns version 1 `tool.result` JSON envelopes
 - accepts version 1 `tool.cancel` JSON envelopes
 - checks tool mode, explicit user action, and per-call confirmation policy
-- implements `tools.list`, `composer.getState`, `settings.summary`, and `permissions.status`
-- implements composer tools: `composer.setDraft`, `composer.selectRecipe`, and `composer.clear`
+- implements `app.snapshot`, `tools.list`, `composer.getState`, `settings.summary`, and `permissions.status`
+- implements app panel hide through `app.hideComposer`
+- implements composer tools: `composer.setDraft`, `composer.setInstruction`, `composer.selectRecipe`, and `composer.clear`
 - implements LLM tools: `llm.chat`, `llm.stream`, and `llm.cancel`
 - implements clipboard copy through `clipboard.copyGeneratedOutput`
 - implements app-anchor list and activation through `appAnchors.list` and `appAnchors.activate`
@@ -159,7 +163,7 @@ The dispatcher now lives in `InputoComposerFeature`:
 - implements grant-based file tools through `InputoMacPlatform.FileGrantService`
 - emits `llm.started`, `llm.delta`, `llm.completed`, `llm.failed`, and `llm.cancelled` events
 - uses true OpenAI-compatible SSE provider streaming for `llm.stream`
-- exposes `InputoNativeBridgeMessageHandling` and `InputoNativeBridgeHost` as the host-facing boundary for a future WKWebView adapter
+- exposes `InputoNativeBridgeMessageHandling` and `InputoNativeBridgeHost` as the host-facing boundary used by the WKWebView adapter
 - rejects unsupported bridge versions
 - rejects unknown tools
 - rejects policy violations with display-safe errors
@@ -182,12 +186,19 @@ Placeholder contracts should be implemented in dependency order, not by starting
 4. Phase 2D: implement grant-based file picker/read/write tools after bridge policy and confirmation UI exist. Done at native executor level through `FileGrantService`; future Web UI still needs to render the confirmation surface before invoking these tools.
 5. Later agent phases: implement manifest-governed `network.fetch`, connector tools, and MCP tools only after their review, credential, cancellation, and audit policies exist. Not enabled; `network.fetch` is explicitly policy-denied.
 
-## Phase 3 Readiness
+## Phase 3 Minimal Host Landing
 
-The native side is ready for a minimal WKWebView host slice once the app chooses to begin Phase 3:
+The native side now has the first minimal WKWebView host slice:
 
-- WebView code should call only `InputoNativeBridgeMessageHandling.receiveBridgeMessage`.
-- Native-to-Web events should be delivered from `InputoBridgeEventEmitter` through the host adapter.
-- The host should still load only bundled local assets and keep settings native.
-- The host must provide explicit user-action and confirmation context for side-effecting bridge calls.
-- React, Vite, and Web agent planner work remain deferred until after the minimal host proves bridge wiring, focus, IME, Escape handling, and panel sizing.
+- `InputoWebComposerView` lives in `InputoComposerFeature` and wraps `WKWebView`.
+- Static web assets are bundled as SwiftPM resources under `Resources/WebComposer`; Xcode does not depend on Node.
+- The host uses `WKWebsiteDataStore.nonPersistent()`.
+- Top-level navigation is restricted to bundled file URLs under the web asset directory.
+- Web-to-native messages are routed only through `InputoNativeBridgeHost.receiveBridgeMessage`.
+- Native-to-Web events are emitted through `InputoBridgeEventEmitter` and delivered into Web by the host adapter.
+- The Web composer body is the only composer body; native keeps the shell, settings entry, Jump anchors, panel behavior, and a small missing-assets error state.
+- Remote Web content is blocked with both bundled-asset navigation policy and a `WKContentRuleList` for `http`/`https` URLs.
+- Native forwards the current system color scheme into Web so the composer can render light and dark themes explicitly.
+- Settings and Jump anchors remain native.
+- React and Vite are the next Phase 4 frontend-source tooling step. The Web agent planner remains deferred.
+- Current Web composer implementation details live in `Docs/WEB_COMPOSER.md`.

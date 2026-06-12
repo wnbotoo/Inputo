@@ -392,8 +392,11 @@ Suggested native-to-web event:
 
 Composer state:
 
+- `app.snapshot`
+- `app.hideComposer`
 - `composer.getState`
 - `composer.setDraft`
+- `composer.setInstruction`
 - `composer.selectRecipe`
 - `composer.clear`
 
@@ -665,7 +668,7 @@ Initial landing:
 - File read/write is represented as grant-based contract-only tools that require assisted workflow mode, explicit user action, and per-call confirmation.
 - `InputoComposerFeature.AppState` exposes `nativeExecutorSnapshot(agentMode:)` and `cancelActiveGeneration()` as the current adapter over the native v0.1 state.
 - This is not yet the bridge host. JSON dispatch, event emission, streaming coalescing, and request-id cancellation belong to Phase 2.
-- React, Vite, and WKWebView hosting remain deferred until the native bridge dispatcher is proven.
+- Native executor DTOs remain framework-agnostic; React/Vite source tooling starts only after the bridge dispatcher and minimal WKWebView host are proven.
 
 ### Phase 2: Build Bridge Host Without Web UI
 
@@ -686,10 +689,10 @@ This phase can be tested without `WKWebView` by sending JSON fixtures into the d
 Initial landing:
 
 - `InputoComposerFeature/Bridge/InputoNativeBridgeDispatcher.swift` accepts versioned `tool.call` JSON envelopes and returns `tool.result` envelopes.
-- The dispatcher now executes Phase 2A-D native executor tools: read-only snapshots, composer draft/recipe/clear, LLM chat/stream/cancel, clipboard copy, app anchors, settings open, permission status/request, and grant-based file picker/read/write.
+- The dispatcher now executes Phase 2A-D native executor tools: app snapshot/hide, composer draft/instruction/recipe/clear, LLM chat/stream/cancel, clipboard copy, app anchors, settings open, permission status/request, and grant-based file picker/read/write.
 - Side-effecting tools require policy context such as explicit user action and, where needed, per-call confirmation.
 - `llm.stream` uses OpenAI-compatible server-sent event streaming through `AIProviderClient.streamTransform`.
-- `InputoNativeBridgeMessageHandling` and `InputoNativeBridgeHost` are the host-facing boundary that a future WKWebView adapter should call.
+- `InputoNativeBridgeMessageHandling` and `InputoNativeBridgeHost` are the host-facing boundary used by the WKWebView adapter.
 - Unsupported versions, unknown tools, deferred network fetch, and policy violations return display-safe error envelopes.
 - Request fixtures live in `Contracts/examples/bridge-readonly-tool-calls.v1.json` and `Contracts/examples/bridge-side-effect-tool-calls.v1.json`.
 - Event emission, request-id cancellation, and streaming delta coalescing are covered by package tests.
@@ -697,11 +700,11 @@ Initial landing:
 
 ### Phase 3: Add Minimal WKWebView Host
 
-Goal: embed a local web surface while keeping the native composer available as fallback.
+Goal: embed a local web composer body while keeping native ownership of the shell, settings, Jump anchors, and panel behavior.
 
 Tasks:
 
-- add a small `WKWebView` composer body behind a debug flag or internal setting
+- add a small `WKWebView` composer body
 - load only bundled local assets
 - configure restrictive navigation and data-store behavior
 - connect Web messages to `InputoNativeBridgeHost`
@@ -711,23 +714,45 @@ Tasks:
 
 The first web UI should be intentionally small and use the existing native executor. It should not introduce agent tools yet.
 
-### Phase 4: Move Composer Body To Web
+Initial landing:
 
-Goal: let Web own the product surface below the native anchor row.
+- `InputoComposerFeature` now contains the minimal `WKWebView` host and checked-in static composer assets.
+- `Docs/WEB_COMPOSER.md` documents the current implementation details, Phase 3 manual QA coverage, and Phase 4 direction.
+- The app target remains thin; `ComposerView` hosts the Web composer body directly below the native header and Jump anchors.
+- Static assets are copied by SwiftPM resources; there is no React, Vite, Node, or remote asset dependency.
+- The web asset CSP blocks direct browser network access with `connect-src 'none'`.
+- The host uses a non-persistent `WKWebsiteDataStore`, restricts navigation to the bundled asset directory, and installs a content rule list that blocks `http`/`https` resource loads.
+- Web-to-native messages go through `InputoNativeBridgeHost`.
+- Native-to-Web streaming events go through `InputoBridgeEventEmitter`.
+- Native forwards the current light/dark color scheme into Web.
+- Settings, Jump anchors, panel positioning, Escape handling, and app activation remain native.
+- Manual QA has covered the critical Phase 3 runtime path: initial focus, draft retention, Chinese IME composition, IME-aware Escape handling, Command-Return generation, basic editing shortcuts, dark/light theme propagation, provider-backed generation preview, privacy posture, and native material fit. Panel sizing across displays and Spaces should remain part of normal regression QA.
+
+### Phase 4: Add React TypeScript Vite Web Workspace
+
+Goal: replace the hand-authored Phase 3 static assets with a maintainable React + TypeScript + Vite composer workspace while preserving the same native shell, bridge boundary, bundled-asset loading model, and v1 privacy defaults.
 
 Tasks:
 
-- render preview, recipe picker, instruction, editor, and actions in Web
-- stream output into Web
-- keep Copy, Generate, Cancel, Clear as bridge commands
-- preserve native settings
-- add visual and interaction tests where practical
+- create a small frontend source workspace for the existing composer body
+- keep the production output as bundled local static assets loaded by the existing `WKWebView` host
+- keep Xcode app builds independent of network access and frontend dependency installation
+- add a typed Web bridge client that only calls `InputoNativeBridgeHost` tools
+- mirror bridge DTOs and composer state types in TypeScript without making React part of the native executor contract
+- preserve native Settings, Jump anchors, panel sizing/placement, app activation, Keychain, clipboard, provider networking, file grants, and permissions
+- preserve WebView restrictions: non-persistent data store, bundled-file navigation, CSP, remote content blocking, no browser-side provider fetch, and no browser storage for input/output history
+- port the current preview, recipe picker, instruction, editor, actions, status, streaming output, focus, IME, Escape, shortcut, and theme behavior into React
+- add frontend unit tests where practical for bridge client behavior, reducer/state transitions, keyboard handling, and theme handling
+- keep the generated static output reviewable and CI-checkable against the React source
 - document frontend contribution patterns
 
 Exit criteria:
 
-- web composer can replace the SwiftUI composer body for normal use
-- native fallback remains possible during the transition
+- the app continues to load bundled local static assets through the existing `WKWebView` host
+- `swift test --package-path InputoModules` and the Xcode Debug build pass without running `npm install` or downloading dependencies
+- the React/Vite production build can regenerate the bundled assets deterministically
+- the Web composer behavior matches the accepted Phase 3 composer body
+- native shell ownership remains intact
 - privacy defaults are unchanged
 
 ### Phase 5: Introduce Web Agent Planner

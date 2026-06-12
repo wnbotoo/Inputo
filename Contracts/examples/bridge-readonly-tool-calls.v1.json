@@ -1,6 +1,13 @@
 [
   {
     "version": 1,
+    "id": "app-snapshot-request",
+    "type": "tool.call",
+    "tool": "app.snapshot",
+    "payload": {}
+  },
+  {
+    "version": 1,
     "id": "tools-request",
     "type": "tool.call",
     "tool": "tools.list",

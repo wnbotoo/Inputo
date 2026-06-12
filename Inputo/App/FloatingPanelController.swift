@@ -6,7 +6,7 @@ import SwiftUI
 @MainActor
 final class FloatingPanelController: NSObject, NSWindowDelegate {
     private let appState: AppState
-    private let panel: NSPanel
+    private let panel: InputoFloatingPanel
     private var keyDownMonitor: Any?
 
     var onEscape: (() -> Void)?
@@ -21,12 +21,13 @@ final class FloatingPanelController: NSObject, NSWindowDelegate {
         let contentView = ComposerView(appState: appState)
         let hostingView = NSHostingView(rootView: contentView)
 
-        panel = NSPanel(
+        panel = InputoFloatingPanel(
             contentRect: NSRect(x: 0, y: 0, width: 860, height: 320),
             styleMask: [.titled, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
+        panel.ignoresNativeCancelOperation = InputoWebComposerAssets.areBundled
         panel.contentView = hostingView
         panel.isFloatingPanel = true
         panel.level = .floating
@@ -46,10 +47,22 @@ final class FloatingPanelController: NSObject, NSWindowDelegate {
             guard let self, self.panel.isKeyWindow, event.keyCode == UInt16(kVK_Escape) else {
                 return event
             }
+            guard !InputoWebComposerAssets.areBundled else {
+                return event
+            }
             self.onEscape?()
             return nil
-        }
     }
+}
+
+private final class InputoFloatingPanel: NSPanel {
+    var ignoresNativeCancelOperation = false
+
+    override func cancelOperation(_ sender: Any?) {
+        guard !ignoresNativeCancelOperation else { return }
+        super.cancelOperation(sender)
+    }
+}
 
     deinit {
         if let keyDownMonitor {
@@ -85,4 +98,5 @@ final class FloatingPanelController: NSObject, NSWindowDelegate {
         let y = visibleFrame.minY + bottomMargin
         panel.setFrame(NSRect(x: x, y: y, width: width, height: height), display: true)
     }
+
 }

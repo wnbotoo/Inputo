@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'none'; connect-src 'none'; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; worker-src 'none'">
+  <title>Inputo Composer</title>
+  <link rel="stylesheet" href="composer.css">
+</head>
+<body>
+  <main class="composer-shell" aria-label="Inputo composer">
+    <section class="preview-panel" aria-label="Preview">
+      <div class="panel-title-row">
+        <h2>Preview</h2>
+        <button id="copyButton" type="button" class="secondary-button">Copy</button>
+      </div>
+      <textarea id="outputText" class="preview-output" readonly spellcheck="false" aria-label="Generated preview"></textarea>
+    </section>
+
+    <section class="control-row" aria-label="Transform controls">
+      <select id="recipeSelect" aria-label="Preset"></select>
+      <input id="instructionInput" type="text" autocomplete="off" spellcheck="true" aria-label="Instruction" placeholder="Instruction">
+    </section>
+
+    <section class="draft-panel" aria-label="Draft">
+      <textarea id="draftInput" class="draft-input" autocomplete="off" spellcheck="true" placeholder="Paste or type the text you want Inputo to transform..."></textarea>
+      <div class="action-row">
+        <p id="statusText" class="status-text" role="status"></p>
+        <div class="action-buttons">
+          <button id="clearButton" type="button" class="secondary-button">Clear</button>
+          <button id="cancelButton" type="button" class="secondary-button" hidden>Cancel</button>
+          <button id="generateButton" type="button" class="primary-button">Generate</button>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script src="composer.js"></script>
+</body>
+</html>
