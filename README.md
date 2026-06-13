@@ -61,12 +61,12 @@ On first launch, open **Inputo > Settings** from the menu-bar item, add an OpenA
 Prerequisites:
 
 - macOS with Xcode and SwiftPM on `PATH`
-- Node.js and npm when editing `packages/web-composer`
+- Node.js and pnpm 11 when editing `packages/web-composer`
 
 Install Web dependencies only when changing the Web composer:
 
 ```bash
-npm install --prefix packages/web-composer
+pnpm --dir packages/web-composer install
 ```
 
 Every macOS or contract change should keep these commands passing:
@@ -79,7 +79,7 @@ xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration De
 Every Web composer change should also pass:
 
 ```bash
-npm --prefix packages/web-composer run verify
+pnpm --dir packages/web-composer run verify
 ```
 
 Read [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for setup, QA, generated Web assets, and troubleshooting.

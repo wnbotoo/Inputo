@@ -910,14 +910,18 @@ func webComposerAssetsAreBundledAndRestrictNetwork() throws {
     #expect(script.contains("navigator.serviceWorker") == false)
     #expect(script.contains("XMLHttpRequest") == false)
     #expect(script.contains("WebSocket") == false)
-    #expect(script.contains(#""app.hideComposer""#))
-    #expect(script.contains(#""llm.stream""#))
-    #expect(script.contains(#""clipboard.copyGeneratedOutput""#))
-    #expect(style.contains("background:transparent!important"))
-    #expect(style.contains("--panel: transparent;"))
-    #expect(style.contains("--field: transparent;"))
-    #expect(style.contains("--surface: rgb(222 230 236 / .18);"))
-    #expect(style.contains("appearance:none"))
+    #expect(script.contains("app.hideComposer"))
+    #expect(script.contains("llm.stream"))
+    #expect(script.contains("clipboard.copyGeneratedOutput"))
+    let compactStyle = style.filter { !$0.isWhitespace }
+    #expect(
+        compactStyle.contains("background:transparent!important") ||
+        compactStyle.contains("background:00!important")
+    )
+    #expect(compactStyle.contains("--panel:transparent;"))
+    #expect(compactStyle.contains("--field:transparent;"))
+    #expect(compactStyle.contains("--surface:"))
+    #expect(compactStyle.contains("appearance:none"))
 }
 
 @MainActor

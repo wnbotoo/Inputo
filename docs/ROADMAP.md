@@ -19,7 +19,7 @@ Inputo currently has:
 
 - Keep OS privileges native.
 - Keep Web UI reusable across macOS and future Windows.
-- Keep Xcode builds independent of Node, npm install, a dev server, and network access.
+- Keep Xcode builds independent of Node, pnpm install, a dev server, and network access.
 - Keep bridge contracts explicit, versioned, typed, and policy-checked.
 - Keep privacy defaults conservative: no automatic paste, no input/output history, no screenshots, no window-title capture, and no browser-side provider networking.
 
@@ -208,7 +208,7 @@ For any meaningful feature slice:
 
 - Swift package tests pass
 - Xcode Debug build passes
-- frontend `npm run verify` passes when Web source or bundled assets change
+- frontend `pnpm run verify` passes when Web source or bundled assets change
 - generated Web assets are committed with their source changes
 - docs are updated when architecture, commands, paths, or privacy boundaries change
 - manual QA covers the affected composer, settings, provider, bridge, or OS-integration flow

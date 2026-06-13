@@ -4,7 +4,7 @@ This file tracks direct dependency license notes for the repository. It is not a
 
 ## JavaScript
 
-The Web composer workspace at `packages/web-composer` currently declares these direct npm dependencies:
+The Web composer workspace at `packages/web-composer` currently declares these direct JavaScript package dependencies:
 
 | Package | Purpose |
 | --- | --- |
@@ -18,7 +18,7 @@ The Web composer workspace at `packages/web-composer` currently declares these d
 | `vite` | Web composer development and build tool |
 | `vitest` | Web composer test runner |
 
-Before publishing a release, review the full transitive npm dependency tree from `packages/web-composer/package-lock.json` and update this file if any dependency requires attribution beyond its package metadata.
+Before publishing a release, review the full transitive dependency tree from `packages/web-composer/pnpm-lock.yaml` and update this file if any dependency requires attribution beyond its package metadata.
 
 ## Swift
 

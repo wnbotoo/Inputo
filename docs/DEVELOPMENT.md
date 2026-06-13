@@ -5,7 +5,7 @@ This document describes the everyday development workflow for the current Inputo
 ## Prerequisites
 
 - macOS with Xcode and SwiftPM available on `PATH`.
-- Node.js and npm for `packages/web-composer`.
+- Node.js and pnpm 11 for `packages/web-composer`.
 - No CocoaPods, Carthage, XcodeGen, or project generator is used.
 
 The app must build from checked-in sources without installing Web dependencies. Web dependencies are required only when editing or regenerating the composer assets.
@@ -14,7 +14,7 @@ The app must build from checked-in sources without installing Web dependencies. 
 
 ```bash
 cd /Users/wnbot/Projects/Inputo
-npm install --prefix packages/web-composer
+pnpm --dir packages/web-composer install
 ```
 
 Open the app in Xcode:
@@ -58,16 +58,16 @@ Run this before committing Web composer source or bundled Web assets:
 
 ```bash
 cd packages/web-composer
-npm run verify
+pnpm run verify
 ```
 
-`npm run verify` typechecks, runs Vitest, rebuilds the production bundle, and confirms the checked-in app assets match the Web source.
+`pnpm run verify` typechecks, runs Vitest, rebuilds the production bundle, and confirms the checked-in app assets match the Web source.
 
 ## CI
 
 GitHub Actions currently runs:
 
-- `npm run verify` in `packages/web-composer`
+- `pnpm run verify` in `packages/web-composer`
 - `swift test --package-path apps/macos/InputoModules`
 - `xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build`
 
@@ -79,14 +79,14 @@ Start the Vite dev server when working on React UI:
 
 ```bash
 cd packages/web-composer
-npm run dev
+pnpm run dev
 ```
 
 Regenerate the assets used by the macOS app:
 
 ```bash
 cd packages/web-composer
-npm run build
+pnpm run build
 ```
 
 The build writes to:
@@ -95,7 +95,7 @@ The build writes to:
 apps/macos/InputoModules/Sources/InputoComposerFeature/Resources/WebComposer
 ```
 
-Do not edit generated `composer.js`, `composer.css`, or generated `index.html` by hand. Edit files under `packages/web-composer/src` or `packages/web-composer/index.html`, then run `npm run build`.
+Do not edit generated `composer.js`, `composer.css`, or generated `index.html` by hand. Edit files under `packages/web-composer/src` or `packages/web-composer/index.html`, then run `pnpm run build`.
 
 ## Manual QA Checklist
 
@@ -120,7 +120,7 @@ For macOS runtime changes, verify:
 
 Blank Web composer:
 
-- Run `cd packages/web-composer && npm run build`.
+- Run `cd packages/web-composer && pnpm run build`.
 - Confirm `apps/macos/InputoModules/Sources/InputoComposerFeature/Resources/WebComposer/index.html` contains `<script defer src="./composer.js"></script>`.
 - Confirm it does not contain `type="module"` in the production asset. The bundled WKWebView runtime uses a classic script tag for local-file compatibility.
 - Rebuild the app with `xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build`.
@@ -137,8 +137,8 @@ Web assets out of sync:
 
 ```bash
 cd packages/web-composer
-npm run build
-npm run check:assets
+pnpm run build
+pnpm run check:assets
 ```
 
 Expected WebContent logs:

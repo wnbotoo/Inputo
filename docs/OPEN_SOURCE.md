@@ -16,7 +16,7 @@ This checklist tracks the repository work needed before making Inputo public und
 - [x] GitHub issue templates.
 - [x] GitHub pull request template.
 - [x] GitHub Actions CI.
-- [x] Dependabot configuration for npm and GitHub Actions.
+- [x] Dependabot configuration for JavaScript packages and GitHub Actions.
 
 ## Before Switching the Repository Public
 
@@ -33,7 +33,7 @@ This checklist tracks the repository work needed before making Inputo public und
 
 ## Legal and Dependency Checks
 
-- [ ] Review direct and transitive npm dependencies for license compatibility.
+- [ ] Review direct and transitive JavaScript dependencies for license compatibility.
 - [ ] Review SwiftPM dependencies before adding any external packages.
 - [ ] Keep third-party notices current if new dependencies require attribution.
 - [ ] Confirm the app name, icon, and README media do not include third-party trademarks or private content.
@@ -52,7 +52,7 @@ This checklist tracks the repository work needed before making Inputo public und
 - [ ] Confirm GitHub Actions passes on a clean public clone.
 - [ ] Confirm `swift test --package-path apps/macos/InputoModules` passes locally.
 - [ ] Confirm the Xcode Debug build command passes locally.
-- [ ] Confirm `npm --prefix packages/web-composer run verify` passes locally when Web assets change.
+- [ ] Confirm `pnpm --dir packages/web-composer run verify` passes locally when Web assets change.
 - [ ] Document any required Xcode or macOS version pin before the first tagged release.
 
 ## Documentation Checks

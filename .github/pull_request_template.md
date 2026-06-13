@@ -8,7 +8,7 @@
 
 - [ ] `swift test --package-path apps/macos/InputoModules`
 - [ ] `xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build`
-- [ ] `npm --prefix packages/web-composer run verify` when Web composer source or bundled assets changed
+- [ ] `pnpm --dir packages/web-composer run verify` when Web composer source or bundled assets changed
 - [ ] Manual QA notes added for UI, clipboard, provider, permission, anchor, or bridge behavior
 
 ## Privacy and Security

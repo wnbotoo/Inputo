@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { InputoBridgeClient, type BridgeRuntime } from "../bridge/bridgeClient";
-import type { BridgeResult } from "../bridge/types";
+import { InputoBridgeClient, type BridgeRuntime } from "./bridgeClient";
+import type { BridgeResult } from "./types";
 
 describe("InputoBridgeClient", () => {
   it("posts typed bridge envelopes and resolves matching responses", async () => {

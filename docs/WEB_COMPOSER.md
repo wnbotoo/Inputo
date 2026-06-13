@@ -34,17 +34,29 @@ packages/web-composer/
   vitest.config.ts
   scripts/check-generated-assets.mjs
   src/
-    App.tsx
-    main.tsx
-    bridge/
-      bridgeClient.ts
-      types.ts
-    state/
-      composer.ts
-    styles/
-      composer.css
-    __tests__/
+    app/
+      App.tsx
+      main.tsx
+      styles/
+        composer.css
+    features/
+      composer/
+        components/
+          ComposerScreen.tsx
+        hooks/
+          useComposerController.ts
+        model/
+          composerReducer.ts
+          composerReducer.test.ts
+    shared/
+      bridge/
+        bridgeClient.ts
+        bridgeClient.test.ts
+        types.ts
+    env.d.ts
 ```
+
+`src/app` owns bootstrapping and app-level shell composition. `src/features` owns feature UI, hooks, state, and colocated tests. `src/shared` is for cross-feature infrastructure such as the native bridge client and bridge DTOs.
 
 ## Development
 
@@ -52,13 +64,13 @@ Install dependencies:
 
 ```bash
 cd packages/web-composer
-npm install
+pnpm install
 ```
 
 Run the browser dev server:
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 The dev server is for fast React iteration only. In that environment the native bridge is unavailable, so bridge calls return safe internal errors. Use it to work on layout, reducer behavior, theme styling, and basic UI states. Use the macOS app for real bridge and provider behavior.
@@ -66,19 +78,19 @@ The dev server is for fast React iteration only. In that environment the native 
 Run frontend tests:
 
 ```bash
-npm test
+pnpm test
 ```
 
 Typecheck:
 
 ```bash
-npm run typecheck
+pnpm run typecheck
 ```
 
 Full Web verification:
 
 ```bash
-npm run verify
+pnpm run verify
 ```
 
 ## Building for the App
@@ -87,7 +99,7 @@ Generate production assets:
 
 ```bash
 cd packages/web-composer
-npm run build
+pnpm run build
 ```
 
 Output path:
@@ -112,14 +124,14 @@ Vite source development still uses ES modules. The bundled WKWebView runtime use
 
 ## Asset Consistency
 
-`npm run check:assets` builds into a temporary directory and compares the result with the checked-in app bundle assets. CI runs the same verification.
+`pnpm run check:assets` builds into a temporary directory and compares the result with the checked-in app bundle assets. CI runs the same verification.
 
 If the check fails:
 
 ```bash
 cd packages/web-composer
-npm run build
-npm run check:assets
+pnpm run build
+pnpm run check:assets
 ```
 
 Commit the source and regenerated app assets together.
@@ -176,14 +188,14 @@ For React-only UI issues:
 
 ```bash
 cd packages/web-composer
-npm run dev
+pnpm run dev
 ```
 
 For production bundle issues:
 
 ```bash
 cd packages/web-composer
-npm run build
+pnpm run build
 python3 -m http.server 5174 --directory ../../apps/macos/InputoModules/Sources/InputoComposerFeature/Resources/WebComposer
 ```
 
@@ -191,7 +203,7 @@ Open `http://127.0.0.1:5174` in a browser to inspect the generated files. The na
 
 For WKWebView runtime issues:
 
-1. Rebuild Web assets with `npm run build`.
+1. Rebuild Web assets with `pnpm run build`.
 2. Rebuild the macOS app.
 3. Confirm generated `index.html` uses `<script defer src="./composer.js"></script>`.
 4. Confirm generated `index.html` does not contain `type="module"` or `crossorigin`.

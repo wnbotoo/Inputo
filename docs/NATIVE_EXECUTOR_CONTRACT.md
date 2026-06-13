@@ -142,5 +142,5 @@ Native errors should be redacted before crossing the bridge. Provider URLs, API 
 - DTOs and tool descriptors: `apps/macos/InputoModules/Sources/InputoCore/Models/NativeExecutorContract.swift`
 - Bridge dispatcher: `apps/macos/InputoModules/Sources/InputoComposerFeature/Bridge/InputoNativeBridgeDispatcher.swift`
 - WKWebView host boundary: `apps/macos/InputoModules/Sources/InputoComposerFeature/Bridge/InputoNativeBridgeHost.swift`
-- Web bridge client: `packages/web-composer/src/bridge/bridgeClient.ts`
-- Web bridge types: `packages/web-composer/src/bridge/types.ts`
+- Web bridge client: `packages/web-composer/src/shared/bridge/bridgeClient.ts`
+- Web bridge types: `packages/web-composer/src/shared/bridge/types.ts`

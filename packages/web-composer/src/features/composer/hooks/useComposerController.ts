@@ -6,13 +6,14 @@ import {
   useRef,
   type ChangeEvent,
   type CompositionEvent,
-  type InputEvent as ReactInputEvent
+  type InputEvent as ReactInputEvent,
+  type RefObject
 } from "react";
 import {
   inputoBridge,
   makeBridgeID,
   USER_ACTION_CONTEXT
-} from "./bridge/bridgeClient";
+} from "../../../shared/bridge/bridgeClient";
 import type {
   BridgeResult,
   ComposerState,
@@ -21,17 +22,44 @@ import type {
   LLMStreamResult,
   NativeEvent,
   NativeSnapshot
-} from "./bridge/types";
+} from "../../../shared/bridge/types";
 import {
   composerReducer,
   initialComposerViewState,
   type ComposerViewState
-} from "./state/composer";
+} from "../model/composerReducer";
 
 const SYNC_DELAY_MS = 160;
 const COMPOSITION_ESCAPE_GRACE_MS = 700;
 
-export function App() {
+export interface ComposerStatus {
+  text: string;
+  isError: boolean;
+}
+
+export interface ComposerController {
+  viewState: ComposerViewState;
+  composer: ComposerState;
+  draftRef: RefObject<HTMLTextAreaElement | null>;
+  hasOutput: boolean;
+  previewText: string;
+  canGenerate: boolean;
+  isGenerating: boolean;
+  status: ComposerStatus;
+  generate: () => Promise<void>;
+  cancelGeneration: () => Promise<void>;
+  clearComposer: () => Promise<void>;
+  copyOutput: () => Promise<void>;
+  markCompositionActivity: (isActive?: boolean) => void;
+  handleDraftCompositionEnd: (event: CompositionEvent<HTMLTextAreaElement>) => void;
+  handleInstructionCompositionEnd: (event: CompositionEvent<HTMLInputElement>) => void;
+  handleDraftChange: (event: ChangeEvent<HTMLTextAreaElement>) => void;
+  handleInstructionChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  handleRecipeChange: (event: ChangeEvent<HTMLSelectElement>) => void;
+  handleBeforeInput: (event: ReactInputEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+}
+
+export function useComposerController(): ComposerController {
   const [viewState, dispatch] = useReducer(composerReducer, initialComposerViewState);
   const stateRef = useRef<ComposerViewState>(viewState);
   const draftRef = useRef<HTMLTextAreaElement | null>(null);
@@ -257,7 +285,7 @@ export function App() {
     !composer.isGenerating &&
     !viewState.activeRequestID;
   const isGenerating = composer.isGenerating || Boolean(viewState.activeRequestID);
-  const status = useMemo(() => {
+  const status = useMemo<ComposerStatus>(() => {
     if (composer.errorMessage) {
       return { text: composer.errorMessage, isError: true };
     }
@@ -323,99 +351,25 @@ export function App() {
     }
   };
 
-  return (
-    <main className="composer-shell" aria-label="Inputo composer">
-      <section className="preview-panel" aria-label="Preview">
-        <div className="panel-title-row">
-          <h2>Preview</h2>
-          <button
-            type="button"
-            className="secondary-button"
-            disabled={!hasOutput}
-            onClick={copyOutput}
-          >
-            Copy
-          </button>
-        </div>
-        <textarea
-          className={`preview-output${hasOutput ? "" : " is-empty"}`}
-          readOnly
-          spellCheck={false}
-          aria-label="Generated preview"
-          value={previewText}
-        />
-      </section>
-
-      <section className="control-row" aria-label="Transform controls">
-        <select
-          value={composer.selectedRecipeID}
-          aria-label="Preset"
-          onChange={handleRecipeChange}
-        >
-          {viewState.recipes.map((recipe) => (
-            <option key={recipe.id} value={recipe.id}>
-              {recipe.name}
-            </option>
-          ))}
-        </select>
-        <input
-          type="text"
-          value={composer.instruction}
-          autoComplete="off"
-          spellCheck
-          aria-label="Instruction"
-          placeholder="Instruction"
-          onCompositionStart={() => markCompositionActivity(true)}
-          onCompositionUpdate={() => markCompositionActivity(true)}
-          onCompositionEnd={handleInstructionCompositionEnd}
-          onBeforeInput={handleBeforeInput}
-          onChange={handleInstructionChange}
-        />
-      </section>
-
-      <section className="draft-panel" aria-label="Draft">
-        <textarea
-          ref={draftRef}
-          className="draft-input"
-          value={composer.draftText}
-          autoComplete="off"
-          spellCheck
-          placeholder="Paste or type the text you want Inputo to transform..."
-          onCompositionStart={() => markCompositionActivity(true)}
-          onCompositionUpdate={() => markCompositionActivity(true)}
-          onCompositionEnd={handleDraftCompositionEnd}
-          onBeforeInput={handleBeforeInput}
-          onChange={handleDraftChange}
-        />
-        <div className="action-row">
-          <p className={`status-text${status.isError ? " is-error" : ""}`} role="status">
-            {status.text}
-          </p>
-          <div className="action-buttons">
-            <button
-              type="button"
-              className="secondary-button"
-              disabled={composer.isGenerating && !viewState.activeRequestID}
-              onClick={clearComposer}
-            >
-              Clear
-            </button>
-            {isGenerating ? (
-              <button type="button" className="secondary-button" onClick={cancelGeneration}>
-                Cancel
-              </button>
-            ) : null}
-            <button
-              type="button"
-              className="primary-button"
-              disabled={!canGenerate}
-              onClick={generate}
-            >
-              {isGenerating ? "Generating" : "Generate"}
-            </button>
-          </div>
-        </div>
-      </section>
-    </main>
-  );
+  return {
+    viewState,
+    composer,
+    draftRef,
+    hasOutput,
+    previewText,
+    canGenerate,
+    isGenerating,
+    status,
+    generate,
+    cancelGeneration,
+    clearComposer,
+    copyOutput,
+    markCompositionActivity,
+    handleDraftCompositionEnd,
+    handleInstructionCompositionEnd,
+    handleDraftChange,
+    handleInstructionChange,
+    handleRecipeChange,
+    handleBeforeInput
+  };
 }

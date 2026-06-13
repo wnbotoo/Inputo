@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { composerReducer, initialComposerViewState } from "../state/composer";
+import { composerReducer, initialComposerViewState } from "./composerReducer";
 
 describe("composerReducer", () => {
   it("applies native snapshots without dropping default composer fields", () => {

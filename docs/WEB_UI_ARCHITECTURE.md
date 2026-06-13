@@ -64,7 +64,7 @@ Native renders:
 
 ## Bridge Rules
 
-Web must use the bridge client. It should not call `window.webkit` directly from components. Component code should call typed functions in `src/bridge/bridgeClient.ts` and keep DTOs in `src/bridge/types.ts`.
+Web must use the bridge client. It should not call `window.webkit` directly from components. Feature hooks should call typed functions in `src/shared/bridge/bridgeClient.ts` and keep DTOs in `src/shared/bridge/types.ts`.
 
 All native calls should be:
 

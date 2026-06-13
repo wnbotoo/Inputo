@@ -22,12 +22,12 @@ Thanks for helping make Inputo better. This project is a privacy-conscious macOS
 Prerequisites:
 
 - macOS with Xcode and SwiftPM on `PATH`.
-- Node.js and npm when editing `packages/web-composer`.
+- Node.js and pnpm 11 when editing `packages/web-composer`.
 
 Install Web composer dependencies only if you need to edit or regenerate the Web assets:
 
 ```bash
-npm install --prefix packages/web-composer
+pnpm --dir packages/web-composer install
 ```
 
 Open the app in Xcode:
@@ -54,10 +54,10 @@ xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration De
 Run this before opening a pull request that touches the Web composer:
 
 ```bash
-npm --prefix packages/web-composer run verify
+pnpm --dir packages/web-composer run verify
 ```
 
-`npm run verify` typechecks TypeScript, runs Vitest, rebuilds the production bundle, and checks that bundled assets are in sync.
+`pnpm run verify` typechecks TypeScript, runs Vitest, rebuilds the production bundle, and checks that bundled assets are in sync.
 
 ## Pull Request Checklist
 

@@ -27,7 +27,7 @@ const viteBin = join(
 );
 
 if (!existsSync(viteBin)) {
-  fail(`Missing local Vite binary. Run npm install in ${workspaceDir} first.`);
+  fail(`Missing local Vite binary. Run pnpm install in ${workspaceDir} first.`);
 }
 
 const build = spawnSync(
@@ -72,7 +72,7 @@ if (mismatches.length > 0) {
     console.error(`- ${mismatch}`);
   }
   console.error("");
-  console.error("Run `npm run build` in packages/web-composer and commit the regenerated assets.");
+  console.error("Run `pnpm run build` in packages/web-composer and commit the regenerated assets.");
   console.error(`Generated comparison output was left at ${generatedDir}`);
   process.exit(1);
 }

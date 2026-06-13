@@ -5,7 +5,7 @@ import type {
   NativeEvent,
   NativeSnapshot,
   TransformRecipe
-} from "../bridge/types";
+} from "../../../shared/bridge/types";
 
 export const defaultComposerState: ComposerState = {
   draftText: "",

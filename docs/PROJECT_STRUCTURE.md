@@ -60,7 +60,7 @@ flowchart TD
   core -. contract compatibility .-> contracts
 ```
 
-The macOS build must not depend on `npm install`, a Vite dev server, or network access. The app consumes checked-in Web assets. Developers regenerate those assets explicitly from `packages/web-composer`.
+The macOS build must not depend on `pnpm install`, a Vite dev server, or network access. The app consumes checked-in Web assets. Developers regenerate those assets explicitly from `packages/web-composer`.
 
 ## Where New Code Goes
 
@@ -68,7 +68,7 @@ The macOS build must not depend on `npm install`, a Vite dev server, or network 
 - Cross-platform DTOs, provider models, and pure logic: `InputoCore`.
 - macOS system APIs: `InputoMacPlatform`.
 - Composer or settings product behavior: `InputoComposerFeature`.
-- Web composer UI: `packages/web-composer/src`.
+- Web composer UI: `packages/web-composer/src/app`, `packages/web-composer/src/features`, and `packages/web-composer/src/shared`.
 - Generated production Web assets: `InputoComposerFeature/Resources/WebComposer`.
 - Cross-platform schemas or examples: `contracts`.
 - Build or repository automation: `tools`.

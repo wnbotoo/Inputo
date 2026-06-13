@@ -1,4 +1,4 @@
-import type { BridgeReceiveFunction, FocusFunction, ThemeFunction } from "./bridge/types";
+import type { BridgeReceiveFunction, FocusFunction, ThemeFunction } from "./shared/bridge/types";
 
 declare global {
   interface Window {
