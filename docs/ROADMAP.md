@@ -1,6 +1,6 @@
 # Roadmap
 
-This roadmap describes the planned development path from the current macOS app toward a cross-platform native shell plus shared Web composer architecture. It is organized by product capability and engineering risk, not by historical phases.
+This roadmap describes the development path from the current macOS app toward a cross-platform native shell plus shared Web composer architecture. It is organized by product capability and engineering risk, not by historical phases.
 
 ## Current Baseline
 
@@ -17,6 +17,8 @@ Inputo currently has:
 - grant-scoped file read/write UX behind native confirmation in assisted workflow mode
 - compact Web diagnostics and permission-state surfaces that expose only safe setup metadata
 - Swift package tests, frontend tests, generated-asset verification, and CI
+
+Milestones 1 through 4 are implemented as the current foundation. Formal milestone closure still requires a completed manual runtime QA pass using [docs/MILESTONE_RUNTIME_QA.md](MILESTONE_RUNTIME_QA.md), especially for display placement, full-screen Spaces, appearance, reduced motion, IME, VoiceOver, native confirmation, and file-grant flows.
 
 ## Guiding Principles
 
@@ -50,103 +52,44 @@ flowchart TD
   hardening --> release
 ```
 
-## Milestone 1: Runtime Hardening
+## Completed Foundation: Milestones 1-4
 
-Goal: make the current macOS runtime boringly reliable.
+The current foundation combines:
 
-Work:
+- Milestone 1 runtime hardening: bundled Web assets, WKWebView constraints, CI checks, expected WebKit log documentation, focus/keyboard/IME safeguards, and repeatable QA checklist.
+- Milestone 2 composer UX: actionable provider setup, polished generation/cancel/copy/clear states, compact panel styling, keyboard flow, accessibility labels, stale-event protection, and reducer/controller tests.
+- Milestone 3 shared bridge contracts: `packages/bridge-contracts-ts`, `contracts/bridge-tools.v1.json`, Swift/Web drift checks, and contract ownership docs.
+- Milestone 4 native executor UX: native-mediated per-call confirmation, permission state surfacing, grant-scoped file read/write UX, cancellation semantics, and policy tests.
 
-- verify Web composer rendering from the app bundle on clean builds
-- keep the generated Web asset check in CI
-- document expected WebKit/Xcode log noise
-- test panel sizing across displays, full-screen Spaces, light/dark mode, and reduced-motion settings
-- tighten focus handling between native shell and Web composer
-- keep IME composition safe for Escape, Command-Return, and text editing shortcuts
-- add accessibility labels or roles where Web controls are still weak
-- decide how to expose local diagnostic information without leaking secrets
-
-Exit criteria:
-
-- fresh clone can build and run the macOS app
-- Web composer is visible from the app bundle without running a dev server
-- manual QA checklist in `docs/DEVELOPMENT.md` passes
-- noisy but harmless WebKit logs are documented
-
-## Milestone 2: Composer UX
-
-Goal: make the composer feel like a polished daily tool.
-
-Work:
-
-- improve empty, loading, streaming, failed, cancelled, and copied states
-- make provider setup errors actionable from the composer
-- refine recipe selection and custom preset display
-- improve keyboard navigation and screen-reader behavior
-- add localization strategy before more UI strings spread
-- improve visual density for smaller panels
-- add regression tests for reducer edge cases and bridge error display
-
-Exit criteria:
-
-- common failures are understandable without opening logs
-- keyboard-only use works for the core transform loop
-- no UI state depends on browser storage
-
-## Milestone 3: Shared Bridge Contracts
-
-Goal: make native/Web contracts easy to reuse and hard to drift.
-
-Work:
-
-- move shared TypeScript bridge types into `packages/bridge-contracts-ts`
-- decide which bridge DTOs should also live in `contracts`
-- add schema or fixture validation for bridge envelopes
-- add compatibility tests between Swift DTOs and TypeScript DTOs
-- document versioning and deprecation rules
-- keep React-specific state separate from framework-agnostic bridge contracts
-
-Exit criteria:
-
-- TypeScript bridge DTOs are imported from a shared package
-- Swift and TypeScript agree on envelope shape through tests or fixtures
-- contract changes require explicit fixture updates
-
-## Milestone 4: Native Executor UX
-
-Goal: make privileged native tools usable without weakening policy.
-
-Work:
-
-- design and implement confirmation UI for side-effecting tools
-- expose permission status and permission request flows in Web UI where useful
-- complete file grant UX around native picker/save-panel mediated access
-- show tool-call proposals before execution for assisted workflows
-- add cancellation and timeout behavior for long-running tools
-- keep `network.fetch` denied until manifest-governed network policy exists
-
-Exit criteria:
-
-- Web can request approved native capabilities through visible user intent
-- file access is grant-scoped, not path-based
-- side effects are test-covered and policy-checked
+Remaining closure work for this foundation is manual QA evidence, not new architecture.
 
 ## Milestone 5: Web Agent Planner
 
 Goal: let Web orchestrate multi-step workflows while native remains the executor.
 
-Work:
+P0 scope:
 
-- add an activity timeline model
-- introduce tool proposal and approval states
-- let Web coordinate `llm.stream` plus native executor tools
-- add renderer slots for tool results
+- add an activity timeline model for generation, proposals, approvals, tool results, failures, and cancellation
+- introduce tool proposal and approval states in Web without allowing Web to bypass native policy
+- let Web coordinate `llm.stream` plus native tool proposals using existing bridge contracts
+- add renderer slots for safe tool results
 - define safe pure-Web tools separately from privileged native tools
-- preserve cancellation, event ordering, and error redaction
+- preserve request ordering, cancellation, late-event handling, and display-safe errors
+
+Non-goals for the first M5 slice:
+
+- no autonomous background execution
+- no manifest-governed `network.fetch`
+- no external MCP or connector runtime
+- no screenshots, window-title capture, automatic paste, or browser-side provider networking
+- no persistence of prompts, generated output, activity history, or local file paths
 
 Exit criteria:
 
-- Web can plan a workflow but cannot bypass native executor policy
-- every privileged action is visible, cancellable where appropriate, and auditable in UI
+- Web can plan a visible workflow but cannot execute privileged actions without native policy
+- every privileged action is represented as a proposal and remains cancellable or rejectable where appropriate
+- timeline state is test-covered for completion, failure, cancellation, and stale events
+- docs and privacy claims still match implementation
 
 ## Milestone 6: Windows Shell Preparation
 
@@ -190,14 +133,13 @@ Exit criteria:
 
 Highest priority:
 
+- start Milestone 5 with visible activity timeline and tool proposal state
 - finish manual runtime QA across display, Space, appearance, reduced-motion, IME, and VoiceOver scenarios
 - keep bridge contract fixtures, Swift DTOs, TypeScript DTOs, generated assets, and docs updated together
-- review the compact diagnostics and permission-state UI during real macOS QA
 - keep docs and CI aligned with the monorepo layout
 
 Intentionally deferred:
 
-- autonomous Web agent planning
 - manifest-governed network tools
 - external MCP or connector execution
 - advanced diagnostics export

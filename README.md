@@ -24,9 +24,12 @@ It is designed around a few principles:
 - floating composer with keyboard shortcut support
 - React + TypeScript Web composer bundled into the app
 - native bridge for allowlisted composer tools
+- shared bridge contracts with Swift/Web drift checks
 - OpenAI-compatible streaming provider requests from native code
 - provider settings and API key storage through macOS services
 - manual copy flow and app-level jump anchors
+- grant-scoped native file read/write UX for assisted workflows
+- compact safe diagnostics and permission-state display
 - Swift package tests, Web composer tests, generated-asset verification, and GitHub Actions CI
 
 ## Privacy Boundary
@@ -121,11 +124,12 @@ The Xcode project is intentionally thin. Product behavior lives in the local Swi
 - [Web composer](docs/WEB_COMPOSER.md): React/Vite development, bundling, deployment, debugging, and WKWebView constraints.
 - [Web UI architecture](docs/WEB_UI_ARCHITECTURE.md): Web UI ownership model, state flow, bridge rules, and future agent boundary.
 - [Native executor contract](docs/NATIVE_EXECUTOR_CONTRACT.md): native bridge envelope, tool policy, events, errors, and implementation locations.
+- [M5 handover prompt](docs/M5_HANDOVER_PROMPT.md): fresh-thread prompt for starting the Web Agent Planner work.
 - [Third-party notices](THIRD_PARTY_NOTICES.md): direct dependency license notes.
 
 ## Roadmap
 
-Near-term work focuses on runtime hardening, composer UX polish, shared bridge contract checks, native executor UX, Windows shell preparation, and a repeatable release pipeline. See [docs/ROADMAP.md](docs/ROADMAP.md).
+Near-term work starts Milestone 5: a visible Web Agent Planner with activity timeline and tool proposal state while native remains the policy-enforcing executor. Runtime QA for the M1-M4 foundation should continue in parallel. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## What Inputo Is Not
 
