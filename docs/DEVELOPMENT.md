@@ -120,6 +120,8 @@ For macOS runtime changes, verify:
 
 For milestone closure or larger runtime changes, use the fuller checklist in [docs/MILESTONE_RUNTIME_QA.md](MILESTONE_RUNTIME_QA.md).
 
+The Web composer includes a compact Runtime diagnostics disclosure for local QA. It may show bridge version, bundled-asset state, provider configured/not configured, agent mode, tool count, and permission state labels. It must not show prompts, generated output, API keys, raw provider URLs, local paths, screenshots, or stack traces.
+
 ## Troubleshooting
 
 Blank Web composer:
@@ -170,6 +172,7 @@ For changes that affect state, networking, permissions, file access, app activat
 - app anchors still avoid window titles and target-control contents
 - no input history or generated output history is persisted
 - logs and display-safe errors do not include secrets, private prompts, provider credentials, local paths, or stack traces with sensitive details
+- in-app diagnostics only show safe setup/contract metadata and permission labels
 - new bridge tools include policy metadata, tests, fixtures where useful, and documentation updates
 - any new dependency is compatible with the Apache 2.0 release posture and does not silently add telemetry or hosted scripts
 

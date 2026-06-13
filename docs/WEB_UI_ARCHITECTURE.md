@@ -41,6 +41,8 @@ flowchart LR
 
 Native state is authoritative. React keeps local state to make editing responsive, then synchronizes through explicit bridge tools.
 
+Streaming events are request-scoped. The reducer ignores native events for any request that is no longer active, which prevents cancelled or cleared generations from repainting stale output when late deltas arrive.
+
 ## Rendering Responsibilities
 
 Web renders:
@@ -54,6 +56,8 @@ Web renders:
 - native streaming deltas
 - provider setup state from a non-secret native summary
 - native file-tool availability and grant-based read/write actions when policy allows them
+- permission status labels from native snapshots
+- a compact runtime diagnostics summary that contains only safe setup and contract metadata
 
 Native renders:
 
@@ -63,6 +67,7 @@ Native renders:
 - app anchor bar
 - settings window
 - floating panel material and lifecycle
+- native confirmation alerts for per-call confirmed tools
 
 ## Bridge Rules
 
@@ -129,3 +134,4 @@ Maintain these constraints:
 - Escape must not close the panel while composition is active
 - Command-Return should generate
 - generated output must be copied only after explicit user action
+- runtime diagnostics must not show prompts, output, credentials, raw provider URLs, local paths, screenshots, or stack traces

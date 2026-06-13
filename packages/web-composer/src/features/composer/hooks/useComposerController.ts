@@ -14,28 +14,32 @@ import {
   makeBridgeID,
   USER_ACTION_CONTEXT
 } from "../../../shared/bridge/bridgeClient";
-import type {
-  BridgeResult,
-  ComposerState,
-  FilePickRequest,
-  FilePickResponse,
-  FileReadTextRequest,
-  FileReadTextResponse,
-  FileWriteTextRequest,
-  FileWriteTextResponse,
-  LLMCancelPayload,
-  LLMStreamPayload,
-  LLMStreamResult,
-  NativeEvent,
-  NativeSnapshot,
-  SettingsSummary,
-  ToolCancelResponse
+import {
+  BRIDGE_VERSION,
+  type BridgeResult,
+  type ComposerState,
+  type FilePickRequest,
+  type FilePickResponse,
+  type FileReadTextRequest,
+  type FileReadTextResponse,
+  type FileWriteTextRequest,
+  type FileWriteTextResponse,
+  type LLMCancelPayload,
+  type LLMStreamPayload,
+  type LLMStreamResult,
+  type NativeEvent,
+  type NativeSnapshot,
+  type PermissionSnapshot,
+  type PermissionState,
+  type SettingsSummary,
+  type ToolCancelResponse
 } from "@inputo/bridge-contracts";
 import {
   composerReducer,
   initialComposerViewState,
   type ComposerViewState
 } from "../model/composerReducer";
+import { composerStrings } from "../model/composerStrings";
 
 const SYNC_DELAY_MS = 160;
 const COMPOSITION_ESCAPE_GRACE_MS = 700;
@@ -52,8 +56,27 @@ export interface ProviderSetupNotice {
 
 export interface NativeFileToolsState {
   label: string;
+  readDetail: string;
+  writeDetail: string;
   canRead: boolean;
   canWrite: boolean;
+}
+
+export interface PermissionSummaryItem {
+  id: string;
+  label: string;
+  stateLabel: string;
+  detail: string;
+  tone: "ok" | "warn" | "off";
+}
+
+export interface RuntimeDiagnostics {
+  summary: string;
+  items: Array<{
+    label: string;
+    value: string;
+  }>;
+  permissions: PermissionSummaryItem[];
 }
 
 export interface ComposerController {
@@ -67,6 +90,7 @@ export interface ComposerController {
   status: ComposerStatus;
   providerSetup: ProviderSetupNotice | null;
   fileTools: NativeFileToolsState;
+  diagnostics: RuntimeDiagnostics;
   generate: () => Promise<void>;
   cancelGeneration: () => Promise<void>;
   clearComposer: () => Promise<void>;
@@ -89,6 +113,7 @@ export function useComposerController(): ComposerController {
   const draftRef = useRef<HTMLTextAreaElement | null>(null);
   const draftSyncTimer = useRef<number | null>(null);
   const instructionSyncTimer = useRef<number | null>(null);
+  const ignoredRequestIDs = useRef(new Set<string>());
   const isComposingText = useRef(false);
   const lastCompositionActivityAt = useRef(0);
 
@@ -182,6 +207,7 @@ export function useComposerController(): ComposerController {
 
     cancelPendingSync();
     const requestID = makeBridgeID("llm-stream");
+    ignoredRequestIDs.current.delete(requestID);
     dispatch({ type: "startGeneration", requestID });
 
     const response = await inputoBridge.callTool<LLMStreamPayload, LLMStreamResult>(
@@ -195,11 +221,18 @@ export function useComposerController(): ComposerController {
       requestID
     );
 
+    const activeRequestID = stateRef.current.activeRequestID;
+    if (ignoredRequestIDs.current.has(requestID) || (activeRequestID && activeRequestID !== requestID)) {
+      return;
+    }
     dispatch({ type: "clearActiveRequest" });
     if (response.ok) {
       dispatch({
         type: "applyComposer",
-        composer: response.payload.composer ?? {}
+        composer: {
+          isGenerating: false,
+          ...(response.payload.composer ?? {})
+        }
       });
     } else {
       dispatch({
@@ -221,11 +254,13 @@ export function useComposerController(): ComposerController {
       requestID
     });
     if (response.ok && response.payload.didCancel) {
+      ignoredRequestIDs.current.add(requestID);
       dispatch({
         type: "applyComposer",
         composer: {
           isGenerating: false,
-          statusMessage: "Generation cancelled."
+          statusMessage: composerStrings.generationCancelled,
+          errorMessage: null
         }
       });
       dispatch({ type: "clearActiveRequest" });
@@ -241,6 +276,13 @@ export function useComposerController(): ComposerController {
   }, []);
 
   const clearComposer = useCallback(async () => {
+    const activeRequestID = stateRef.current.activeRequestID;
+    if (activeRequestID) {
+      ignoredRequestIDs.current.add(activeRequestID);
+      await inputoBridge.callTool<LLMCancelPayload, ToolCancelResponse>("llm.cancel", {
+        requestID: activeRequestID
+      });
+    }
     const response = await inputoBridge.callTool<Record<string, never>, Partial<ComposerState>>(
       "composer.clear",
       {},
@@ -248,7 +290,8 @@ export function useComposerController(): ComposerController {
     );
     dispatch({ type: "clearActiveRequest" });
     applyToolComposerResult(response);
-  }, [applyToolComposerResult]);
+    focusDraft();
+  }, [applyToolComposerResult, focusDraft]);
 
   const copyOutput = useCallback(async () => {
     const response = await inputoBridge.callTool<Record<string, never>, Partial<ComposerState>>(
@@ -285,7 +328,7 @@ export function useComposerController(): ComposerController {
             type: "applyComposer",
             composer: {
               ...response.payload,
-              statusMessage: `Loaded ${displayName}.`,
+              statusMessage: composerStrings.loadedFile(displayName),
               errorMessage: null
             }
           });
@@ -305,6 +348,13 @@ export function useComposerController(): ComposerController {
     if (!currentFileTools.canRead) {
       return;
     }
+    dispatch({
+      type: "applyComposer",
+      composer: {
+        statusMessage: composerStrings.chooseReadableFile,
+        errorMessage: null
+      }
+    });
     const pickResponse = await inputoBridge.callTool<FilePickRequest, FilePickResponse>(
       "files.pickReadable",
       {
@@ -320,9 +370,16 @@ export function useComposerController(): ComposerController {
     }
     const grant = pickResponse.payload.grants[0];
     if (!grant) {
-      dispatch({ type: "applyComposer", composer: { errorMessage: "No readable file was selected." } });
+      dispatch({ type: "applyComposer", composer: { errorMessage: composerStrings.noReadableFileSelected } });
       return;
     }
+    dispatch({
+      type: "applyComposer",
+      composer: {
+        statusMessage: composerStrings.readingFile,
+        errorMessage: null
+      }
+    });
     const readResponse = await inputoBridge.callTool<FileReadTextRequest, FileReadTextResponse>(
       "files.readText",
       {
@@ -346,6 +403,13 @@ export function useComposerController(): ComposerController {
     if (!currentFileTools.canWrite || text.trim().length === 0) {
       return;
     }
+    dispatch({
+      type: "applyComposer",
+      composer: {
+        statusMessage: composerStrings.chooseWritableFile,
+        errorMessage: null
+      }
+    });
     const pickResponse = await inputoBridge.callTool<FilePickRequest, FilePickResponse>(
       "files.pickWritable",
       {
@@ -361,7 +425,7 @@ export function useComposerController(): ComposerController {
     }
     const grant = pickResponse.payload.grants[0];
     if (!grant) {
-      dispatch({ type: "applyComposer", composer: { errorMessage: "No write target was selected." } });
+      dispatch({ type: "applyComposer", composer: { errorMessage: composerStrings.noWriteTargetSelected } });
       return;
     }
     const writeResponse = await inputoBridge.callTool<FileWriteTextRequest, FileWriteTextResponse>(
@@ -378,7 +442,7 @@ export function useComposerController(): ComposerController {
       dispatch({
         type: "applyComposer",
         composer: {
-          statusMessage: `Saved ${writeResponse.payload.displayName}.`,
+          statusMessage: composerStrings.savedFile(writeResponse.payload.displayName),
           errorMessage: null
         }
       });
@@ -400,6 +464,9 @@ export function useComposerController(): ComposerController {
     );
 
     const unsubscribe = inputoBridge.onEvent((event: NativeEvent) => {
+      if (event.requestID && ignoredRequestIDs.current.has(event.requestID)) {
+        return;
+      }
       const activeRequestID = stateRef.current.activeRequestID;
       if (event.requestID && activeRequestID && event.requestID !== activeRequestID) {
         return;
@@ -460,7 +527,7 @@ export function useComposerController(): ComposerController {
   const hasOutput = composer.generatedOutput.trim().length > 0;
   const previewText = hasOutput
     ? composer.generatedOutput
-    : (composer.isGenerating ? "Generating..." : "No preview yet.");
+    : (composer.isGenerating ? composerStrings.generatingStatus : composerStrings.emptyPreview);
   const providerSetup = useMemo(
     () => providerSetupNotice(viewState.settings),
     [viewState.settings]
@@ -468,6 +535,10 @@ export function useComposerController(): ComposerController {
   const fileTools = useMemo(
     () => fileToolsState(viewState),
     [viewState]
+  );
+  const diagnostics = useMemo(
+    () => runtimeDiagnostics(viewState, providerSetup),
+    [providerSetup, viewState]
   );
   const canGenerate = composer.draftText.trim().length > 0 &&
     !providerSetup &&
@@ -482,7 +553,7 @@ export function useComposerController(): ComposerController {
       return { text: composer.statusMessage, isError: false };
     }
     if (isGenerating) {
-      return { text: "Generating...", isError: false };
+      return { text: composerStrings.generatingStatus, isError: false };
     }
     return { text: "", isError: false };
   }, [composer.errorMessage, composer.statusMessage, isGenerating]);
@@ -551,6 +622,7 @@ export function useComposerController(): ComposerController {
     status,
     providerSetup,
     fileTools,
+    diagnostics,
     generate,
     cancelGeneration,
     clearComposer,
@@ -568,40 +640,146 @@ export function useComposerController(): ComposerController {
   };
 }
 
-function providerSetupNotice(settings: SettingsSummary | null): ProviderSetupNotice | null {
+export function providerSetupNotice(settings: SettingsSummary | null): ProviderSetupNotice | null {
   if (!settings) {
     return null;
   }
   if (settings.provider.validationError) {
     return {
       message: settings.provider.validationError,
-      detail: "Open Settings to update the provider URL or model."
+      detail: composerStrings.providerValidationDetail
     };
   }
   if (!settings.provider.hasAPIKey) {
     return {
-      message: "Add an API key in Settings before generating.",
-      detail: "The API key stays in the native keychain and is never exposed to Web."
+      message: composerStrings.missingAPIKey,
+      detail: composerStrings.missingAPIKeyDetail
     };
   }
   return null;
 }
 
-function fileToolsState(state: ComposerViewState): NativeFileToolsState {
+export function fileToolsState(state: ComposerViewState): NativeFileToolsState {
   const readPermission = state.permissions.find((permission) => permission.id === "file.read");
   const writePermission = state.permissions.find((permission) => permission.id === "file.write");
   const canRead = readPermission?.state === "available" || readPermission?.state === "requires_user_action";
   const canWrite = writePermission?.state === "available" || writePermission?.state === "requires_user_action";
-  if (canRead || canWrite) {
+  if (canRead && canWrite) {
     return {
-      label: "Files require native confirmation",
+      label: composerStrings.filesNeedConfirmation,
+      readDetail: readPermission?.detail ?? "",
+      writeDetail: writePermission?.detail ?? "",
+      canRead,
+      canWrite
+    };
+  }
+  if (canRead) {
+    return {
+      label: composerStrings.filesReadOnly,
+      readDetail: readPermission?.detail ?? "",
+      writeDetail: writePermission?.detail ?? "",
+      canRead,
+      canWrite
+    };
+  }
+  if (canWrite) {
+    return {
+      label: composerStrings.filesWriteOnly,
+      readDetail: readPermission?.detail ?? "",
+      writeDetail: writePermission?.detail ?? "",
       canRead,
       canWrite
     };
   }
   return {
-    label: "Files unavailable",
+    label: composerStrings.filesUnavailable,
+    readDetail: readPermission?.detail ?? "",
+    writeDetail: writePermission?.detail ?? "",
     canRead: false,
     canWrite: false
   };
+}
+
+export function runtimeDiagnostics(
+  state: ComposerViewState,
+  providerSetup: ProviderSetupNotice | null
+): RuntimeDiagnostics {
+  const providerState = state.settings
+    ? (providerSetup ? composerStrings.providerNeedsSetup : composerStrings.providerConfigured)
+    : composerStrings.providerUnknown;
+  const permissions = permissionSummaryItems(state.permissions);
+  const availableCount = state.permissions.filter((permission) => permission.state === "available").length;
+  const actionableCount = state.permissions.filter(
+    (permission) => permission.state === "requires_user_action"
+  ).length;
+  const summary = state.permissions.length === 0
+    ? composerStrings.noPermissionsReported
+    : `${availableCount} available, ${actionableCount} user action`;
+
+  return {
+    summary,
+    items: [
+      { label: "Bridge", value: `v${BRIDGE_VERSION}` },
+      { label: "Assets", value: composerStrings.bundledAssets },
+      { label: "Provider", value: providerState },
+      { label: "Mode", value: formatAgentMode(state.agentMode) },
+      { label: "Tools", value: String(state.tools.length) }
+    ],
+    permissions
+  };
+}
+
+function permissionSummaryItems(permissions: PermissionSnapshot[]): PermissionSummaryItem[] {
+  return permissions.map((permission) => ({
+    id: permission.id,
+    label: permission.displayName,
+    stateLabel: permissionStateLabel(permission.state),
+    detail: permission.detail,
+    tone: permissionTone(permission.state)
+  }));
+}
+
+function permissionStateLabel(state: PermissionState): string {
+  switch (state) {
+    case "available":
+      return composerStrings.available;
+    case "unavailable":
+      return composerStrings.unavailable;
+    case "not_required":
+      return composerStrings.notRequired;
+    case "not_requested":
+      return composerStrings.notRequested;
+    case "requires_user_action":
+      return composerStrings.requiresUserAction;
+    case "denied":
+      return composerStrings.denied;
+    default:
+      return composerStrings.unknown;
+  }
+}
+
+function permissionTone(state: PermissionState): PermissionSummaryItem["tone"] {
+  switch (state) {
+    case "available":
+    case "not_required":
+      return "ok";
+    case "requires_user_action":
+    case "not_requested":
+      return "warn";
+    default:
+      return "off";
+  }
+}
+
+function formatAgentMode(agentMode: ComposerViewState["agentMode"]): string {
+  switch (agentMode) {
+    case "manual_transform":
+      return "Manual";
+    case "assisted_workflow":
+      return "Assisted";
+    case "live_agent":
+      return "Live";
+    default:
+      return composerStrings.unknown;
+  }
 }

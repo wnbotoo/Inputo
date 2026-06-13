@@ -12,7 +12,10 @@ Inputo currently has:
 - a React + TypeScript Web composer body hosted in `WKWebView`
 - checked-in bundled Web assets generated from `packages/web-composer`
 - a native executor bridge for allowlisted Web-to-native tool calls
+- shared TypeScript bridge contracts with Swift/Web drift checks
 - streaming OpenAI-compatible provider requests through native code
+- grant-scoped file read/write UX behind native confirmation in assisted workflow mode
+- compact Web diagnostics and permission-state surfaces that expose only safe setup metadata
 - Swift package tests, frontend tests, generated-asset verification, and CI
 
 ## Guiding Principles
@@ -187,10 +190,9 @@ Exit criteria:
 
 Highest priority:
 
-- continue runtime QA for the fixed Web composer bundle
-- add bridge contract drift checks between Swift and TypeScript
-- improve composer error states and provider setup handling
-- design confirmation UI for native side effects
+- finish manual runtime QA across display, Space, appearance, reduced-motion, IME, and VoiceOver scenarios
+- keep bridge contract fixtures, Swift DTOs, TypeScript DTOs, generated assets, and docs updated together
+- review the compact diagnostics and permission-state UI during real macOS QA
 - keep docs and CI aligned with the monorepo layout
 
 Intentionally deferred:
@@ -198,6 +200,8 @@ Intentionally deferred:
 - autonomous Web agent planning
 - manifest-governed network tools
 - external MCP or connector execution
+- advanced diagnostics export
+- translation rollout beyond the current centralized Web string map
 - automatic paste
 - screenshots or window-title capture
 - moving settings fully into Web

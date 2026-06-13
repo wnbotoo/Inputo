@@ -51,6 +51,68 @@ describe("composerReducer", () => {
     expect(completed.composer.statusMessage).toBe("Ready to copy.");
   });
 
+  it("ignores late stream events after a request is no longer active", () => {
+    const started = composerReducer(initialComposerViewState, {
+      type: "startGeneration",
+      requestID: "request-1"
+    });
+    const cancelled = composerReducer(started, {
+      type: "nativeEvent",
+      event: {
+        version: 1,
+        type: "event",
+        event: "llm.cancelled",
+        requestID: "request-1"
+      }
+    });
+    const lateDelta = composerReducer(cancelled, {
+      type: "nativeEvent",
+      event: {
+        version: 1,
+        type: "event",
+        event: "llm.delta",
+        requestID: "request-1",
+        payload: { text: "late text" }
+      }
+    });
+
+    expect(cancelled.activeRequestID).toBeNull();
+    expect(cancelled.composer.statusMessage).toBe("Generation cancelled.");
+    expect(lateDelta).toBe(cancelled);
+  });
+
+  it("does not let duplicate completion events restore stale status after edits", () => {
+    const started = composerReducer(initialComposerViewState, {
+      type: "startGeneration",
+      requestID: "request-1"
+    });
+    const completed = composerReducer(started, {
+      type: "nativeEvent",
+      event: {
+        version: 1,
+        type: "event",
+        event: "llm.completed",
+        requestID: "request-1"
+      }
+    });
+    const edited = composerReducer(completed, {
+      type: "localDraft",
+      draftText: "fresh draft"
+    });
+    const duplicateCompletion = composerReducer(edited, {
+      type: "nativeEvent",
+      event: {
+        version: 1,
+        type: "event",
+        event: "llm.completed",
+        requestID: "request-1"
+      }
+    });
+
+    expect(edited.composer.statusMessage).toBeNull();
+    expect(duplicateCompletion).toBe(edited);
+  });
+
   it("stores safe display errors from failed streams", () => {
     const state = composerReducer(initialComposerViewState, {
       type: "nativeEvent",
@@ -118,5 +180,32 @@ describe("composerReducer", () => {
 
     expect(edited.composer.statusMessage).toBeNull();
     expect(edited.composer.errorMessage).toBeNull();
+  });
+
+  it("stops generating when active request state is cleared", () => {
+    const started = composerReducer(initialComposerViewState, {
+      type: "startGeneration",
+      requestID: "request-1"
+    });
+    const cleared = composerReducer(started, {
+      type: "clearActiveRequest"
+    });
+
+    expect(cleared.activeRequestID).toBeNull();
+    expect(cleared.composer.isGenerating).toBe(false);
+  });
+
+  it("falls back to the first available recipe when snapshots remove the selected one", () => {
+    const state = composerReducer(initialComposerViewState, {
+      type: "applySnapshot",
+      snapshot: {
+        recipes: [{ id: "summarize", name: "Summarize" }],
+        composer: {
+          selectedRecipeID: "removed-custom-preset"
+        }
+      }
+    });
+
+    expect(state.composer.selectedRecipeID).toBe("summarize");
   });
 });

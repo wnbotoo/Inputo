@@ -17,6 +17,8 @@
   --accent-strong: #0b5f59;
   --accent-ring: rgb(15 118 110 / 0.26);
   --accent-text: #ffffff;
+  --warning: #8a5a00;
+  --ok: #286b3b;
   --danger: #9f352a;
   --shadow: rgb(0 0 0 / 0.04);
   --select-chevron: #28313a;
@@ -41,6 +43,8 @@
   --accent-strong: #5eead4;
   --accent-ring: rgb(45 212 191 / 0.22);
   --accent-text: #061311;
+  --warning: #f4bd50;
+  --ok: #7ddf9a;
   --danger: #ff8a7c;
   --shadow: rgb(0 0 0 / 0.18);
   --select-chevron: #d5dde3;
@@ -70,6 +74,8 @@
     --accent-strong: #5eead4;
     --accent-ring: rgb(45 212 191 / 0.22);
     --accent-text: #061311;
+    --warning: #f4bd50;
+    --ok: #7ddf9a;
     --danger: #ff8a7c;
     --shadow: rgb(0 0 0 / 0.18);
     --select-chevron: #d5dde3;
@@ -112,7 +118,7 @@ textarea::placeholder {
 
 .composer-shell {
   display: grid;
-  grid-template-rows: minmax(92px, 112px) 42px auto 32px minmax(108px, 1fr);
+  grid-template-rows: minmax(88px, 108px) 40px auto 32px 30px minmax(96px, 1fr);
   gap: 6px;
   width: 100%;
   height: 100vh;
@@ -134,6 +140,7 @@ textarea::placeholder {
 .control-row,
 .setup-row,
 .tool-row,
+.inspector-row,
 .draft-panel {
   border: 1px solid transparent;
   border-radius: 8px;
@@ -237,6 +244,171 @@ textarea::placeholder {
   padding: 4px 6px 4px 8px;
 }
 
+.inspector-row {
+  grid-row: 5;
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: visible;
+  padding: 3px 8px;
+}
+
+.inspector-row details {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.inspector-row summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 22px;
+  min-width: 0;
+  border-radius: 6px;
+  outline: none;
+  color: var(--muted);
+  list-style: none;
+}
+
+.inspector-row summary::-webkit-details-marker {
+  display: none;
+}
+
+.inspector-row summary::after {
+  flex: 0 0 auto;
+  width: 0;
+  height: 0;
+  border-top: 4px solid var(--muted);
+  border-right: 4px solid transparent;
+  border-left: 4px solid transparent;
+  content: "";
+}
+
+.inspector-row details[open] summary::after {
+  transform: rotate(180deg);
+}
+
+.inspector-row summary span {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.inspector-row summary strong {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspector-detail {
+  position: absolute;
+  top: 28px;
+  right: -8px;
+  left: -8px;
+  display: grid;
+  gap: 8px;
+  max-height: 190px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: auto;
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  background-color: color-mix(in srgb, Canvas 94%, var(--surface) 6%);
+  box-shadow: 0 8px 22px var(--shadow);
+}
+
+:root[data-theme="dark"] .inspector-detail {
+  background-color: color-mix(in srgb, Canvas 86%, var(--surface) 14%);
+}
+
+.diagnostics-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 10px;
+  margin: 0;
+}
+
+.diagnostics-list div {
+  min-width: 0;
+}
+
+.diagnostics-list dt,
+.diagnostics-list dd,
+.permission-item span,
+.permission-item strong,
+.permission-item p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diagnostics-list dt {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.diagnostics-list dd {
+  margin: 1px 0 0;
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.permission-list {
+  display: grid;
+  gap: 6px;
+}
+
+.permission-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 8px;
+  min-width: 0;
+}
+
+.permission-item span {
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.permission-state {
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.permission-state.is-ok {
+  color: var(--ok);
+}
+
+.permission-state.is-warn {
+  color: var(--warning);
+}
+
+.permission-state.is-off {
+  color: var(--muted);
+}
+
+.permission-item p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.2;
+}
+
 .tool-row span {
   flex: 1 1 auto;
   min-width: 0;
@@ -310,7 +482,7 @@ textarea::placeholder {
 }
 
 .draft-panel {
-  grid-row: 5;
+  grid-row: 6;
   display: grid;
   grid-template-rows: minmax(0, 1fr) 30px;
   gap: 8px;
@@ -320,7 +492,8 @@ textarea::placeholder {
 .draft-input:focus,
 .control-row input:focus,
 .control-row select:focus,
-.preview-output:focus {
+.preview-output:focus,
+.inspector-row summary:focus-visible {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-ring);
 }
@@ -368,6 +541,15 @@ button:disabled {
   opacity: 0.48;
 }
 
+button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-ring);
+}
+
+button:not(:disabled):hover {
+  background: color-mix(in srgb, var(--field-fill) 70%, var(--accent) 30%);
+}
+
 .primary-button {
   border-color: color-mix(in srgb, var(--accent) 72%, var(--border-strong));
   background: var(--accent);
@@ -389,7 +571,7 @@ button:disabled {
 
 @media (max-width: 560px) {
   .composer-shell {
-    grid-template-rows: minmax(82px, 104px) 76px auto 32px minmax(106px, 1fr);
+    grid-template-rows: minmax(78px, 100px) 76px auto 32px 30px minmax(96px, 1fr);
   }
 
   .control-row {
@@ -402,5 +584,13 @@ button:disabled {
   .control-row select,
   .control-row input {
     flex: 1 1 auto;
+  }
+
+  .diagnostics-list {
+    grid-template-columns: 1fr;
+  }
+
+  .inspector-detail {
+    max-height: 150px;
   }
 }

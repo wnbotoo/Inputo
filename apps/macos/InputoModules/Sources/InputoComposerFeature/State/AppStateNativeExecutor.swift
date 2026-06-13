@@ -79,13 +79,13 @@ public extension AppState {
                 id: .fileRead,
                 displayName: "File Read",
                 state: agentMode.allows(minimumMode: .assistedWorkflow) ? .requiresUserAction : .unavailable,
-                detail: "Future file reads must use native file picker grants, not arbitrary Web-provided paths."
+                detail: "Reads use native file picker grants and never arbitrary Web-provided paths."
             ),
             InputoPermissionSnapshot(
                 id: .fileWrite,
                 displayName: "File Write",
                 state: agentMode.allows(minimumMode: .assistedWorkflow) ? .requiresUserAction : .unavailable,
-                detail: "Future file writes must use native save-panel grants and per-call confirmation."
+                detail: "Writes use native save-panel grants and per-call confirmation."
             ),
             InputoPermissionSnapshot(
                 id: .networkTools,

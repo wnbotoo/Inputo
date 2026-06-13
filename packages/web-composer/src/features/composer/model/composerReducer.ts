@@ -11,6 +11,7 @@ import type {
   SettingsSummary,
   TransformRecipe
 } from "@inputo/bridge-contracts";
+import { composerStrings } from "./composerStrings";
 
 export const defaultComposerState: ComposerState = {
   draftText: "",
@@ -61,19 +62,26 @@ export function composerReducer(
   action: ComposerAction
 ): ComposerViewState {
   switch (action.type) {
-    case "applySnapshot":
+    case "applySnapshot": {
+      const recipes = Array.isArray(action.snapshot.recipes)
+        ? action.snapshot.recipes
+        : state.recipes;
       return {
         ...state,
         agentMode: action.snapshot.agentMode ?? state.agentMode,
-        recipes: Array.isArray(action.snapshot.recipes) ? action.snapshot.recipes : state.recipes,
+        recipes,
         settings: action.snapshot.settings ?? state.settings,
         anchors: Array.isArray(action.snapshot.anchors) ? action.snapshot.anchors : state.anchors,
         permissions: Array.isArray(action.snapshot.permissions)
           ? action.snapshot.permissions
           : state.permissions,
         tools: Array.isArray(action.snapshot.tools) ? action.snapshot.tools : state.tools,
-        composer: mergeComposer(state.composer, action.snapshot.composer)
+        composer: normalizeSelectedRecipe(
+          mergeComposer(state.composer, action.snapshot.composer),
+          recipes
+        )
       };
+    }
     case "applyComposer":
       return {
         ...state,
@@ -126,7 +134,11 @@ export function composerReducer(
     case "clearActiveRequest":
       return {
         ...state,
-        activeRequestID: null
+        activeRequestID: null,
+        composer: {
+          ...state.composer,
+          isGenerating: false
+        }
       };
   }
 }
@@ -148,6 +160,10 @@ export function applyNativeEvent(
   state: ComposerViewState,
   event: NativeEvent
 ): ComposerViewState {
+  if (event.requestID && state.activeRequestID !== event.requestID) {
+    return state;
+  }
+
   switch (event.event) {
     case "llm.started":
       return {
@@ -178,7 +194,9 @@ export function applyNativeEvent(
         composer: {
           ...state.composer,
           isGenerating: false,
-          statusMessage: "Ready to copy.",
+          statusMessage: state.composer.generatedOutput.trim().length > 0
+            ? composerStrings.readyToCopy
+            : composerStrings.noOutputReturned,
           errorMessage: null
         }
       };
@@ -191,7 +209,7 @@ export function applyNativeEvent(
           ...state.composer,
           isGenerating: false,
           statusMessage: null,
-          errorMessage: payload?.message ?? "Generation failed."
+          errorMessage: payload?.message ?? composerStrings.generationFailed
         }
       };
     }
@@ -202,11 +220,24 @@ export function applyNativeEvent(
         composer: {
           ...state.composer,
           isGenerating: false,
-          statusMessage: "Generation cancelled.",
+          statusMessage: composerStrings.generationCancelled,
           errorMessage: null
         }
       };
     default:
       return state;
   }
+}
+
+function normalizeSelectedRecipe(
+  composer: ComposerState,
+  recipes: TransformRecipe[]
+): ComposerState {
+  if (recipes.length === 0 || recipes.some((recipe) => recipe.id === composer.selectedRecipeID)) {
+    return composer;
+  }
+  return {
+    ...composer,
+    selectedRecipeID: recipes[0].id
+  };
 }

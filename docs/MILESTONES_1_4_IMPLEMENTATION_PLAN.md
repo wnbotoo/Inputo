@@ -615,3 +615,20 @@ M1-M4 can be considered complete when all of the following are true:
 - Docs match actual behavior.
 - Privacy review checklist passes.
 
+## P1/P2 Implementation Notes
+
+The P1/P2 slice keeps M1-M4 focused on runtime reliability, composer polish, shared contracts, and native-executor UX. The implemented P1/P2 work includes:
+
+- request-scoped streaming guards so late events after cancellation, clear, or a different active request do not restore stale output
+- focused reducer coverage for late stream events, duplicate completions, clear during generation, and removed preset fallback
+- focused controller-helper coverage for provider setup, file-tool availability, and safe diagnostics summaries
+- compact Web permission and runtime diagnostics surfaces driven by native snapshots
+- centralized Web composer strings as the future localization home
+- hover, focus-visible, disabled, compact-width, and inspector-detail styling refinements
+- docs and privacy updates for current file-grant and diagnostics behavior
+
+Explicitly deferred P2 work:
+
+- translation rollout beyond the centralized string map
+- advanced diagnostics export or copy flows, because those would add new clipboard/export behavior that needs separate native policy and privacy review
+- manifest-governed network tools, MCP tools, autonomous planning, screenshots, window-title capture, and automatic paste

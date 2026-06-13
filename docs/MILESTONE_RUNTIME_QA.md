@@ -24,6 +24,15 @@ pnpm --dir packages/web-composer run verify
 xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build
 ```
 
+Latest local verification for the P1/P2 composer and diagnostics slice:
+
+- Date: 2026-06-13
+- Branch: `codex/m1-m4-p0`
+- `CI=true pnpm --dir packages/web-composer run verify`: passed
+- `swift test --package-path apps/macos/InputoModules`: passed, 40 tests
+- `xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build`: passed
+- Browser static asset check at `http://127.0.0.1:5174`: desktop 1280x720 and narrow 390x720 passed with no horizontal overflow, stable draft height, and Runtime inspector closed/open states within viewport
+
 ## Runtime Checks
 
 | Area | Check | Expected Result | Result |
@@ -45,6 +54,7 @@ xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration De
 | Clear | Clear during and after generation. | Draft, instruction, preview, and transient status reset. | |
 | Anchors | Refresh and activate anchors. | App switches without exposing window titles or screenshots. | |
 | File grants | In assisted mode, read and write text through native grants. | Web receives grant-scoped results without local paths. | |
+| Runtime diagnostics | Open the Runtime disclosure in the composer. | Only bridge version, asset status, provider configured/not configured, mode, tool count, and permission labels/details appear. | |
 | Accessibility | Navigate core loop by keyboard and inspect labels with VoiceOver. | Controls have meaningful names and status is announced politely. | |
 | Logs | Review Xcode/WebKit logs. | Only documented harmless noise appears. | |
 
@@ -54,6 +64,6 @@ xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration De
 - Provider requests originate from native code.
 - Browser-side `fetch`, WebSocket, service worker, localStorage, sessionStorage, and IndexedDB remain unused in the bundle.
 - File authority is represented by native grant IDs, not arbitrary Web-provided paths.
+- Runtime diagnostics do not show prompts, generated output, API keys, provider URLs, local paths, screenshots, raw provider responses, or stack traces.
 - Clipboard writes require explicit Copy action.
 - App anchors do not expose window titles, screenshots, or target-control contents.
-

@@ -45,7 +45,9 @@ packages/web-composer/
           ComposerScreen.tsx
         hooks/
           useComposerController.ts
+          useComposerController.test.ts
         model/
+          composerStrings.ts
           composerReducer.ts
           composerReducer.test.ts
     shared/
@@ -59,7 +61,7 @@ packages/bridge-contracts-ts/
     index.ts
 ```
 
-`src/app` owns bootstrapping and app-level shell composition. `src/features` owns feature UI, hooks, state, and colocated tests. `src/shared` is for cross-feature infrastructure such as the native bridge client. Framework-agnostic bridge DTOs live in `packages/bridge-contracts-ts`.
+`src/app` owns bootstrapping and app-level shell composition. `src/features` owns feature UI, hooks, state, UI strings, and colocated tests. `src/shared` is for cross-feature infrastructure such as the native bridge client. Framework-agnostic bridge DTOs live in `packages/bridge-contracts-ts`.
 
 ## Development
 
@@ -170,9 +172,13 @@ Native events used by the composer:
 - `llm.failed`
 - `llm.cancelled`
 
-The native snapshot is authoritative for settings, recipes, permissions, and initial composer state. Web keeps local interaction state for responsiveness, then synchronizes through explicit tools.
+The native snapshot is authoritative for settings, recipes, permissions, and initial composer state. Web keeps local interaction state for responsiveness, then synchronizes through explicit tools. If a native snapshot removes the selected recipe, Web falls back to the first available recipe instead of keeping a stale preset ID.
 
 Provider setup state is rendered from the native snapshot without exposing credentials. Missing or invalid provider setup disables generation and offers the native Settings flow. File tools are shown from native permission state; they stay unavailable in manual mode and use native grant IDs when available in assisted workflow mode.
+
+The composer also renders a compact runtime inspector. It is a safe local diagnostic surface: bridge version, bundled-asset state, provider configured/not configured, agent mode, tool count, and permission state labels. It does not show prompts, generated output, API keys, provider URLs, local file paths, raw provider responses, or stack traces.
+
+Generation events are tied to request IDs. Web ignores late events after cancellation, clear, or a different active request so stale streaming deltas cannot restore old output.
 
 ## Security Constraints
 

@@ -104,7 +104,7 @@ For tools marked with per-call confirmation, Web may indicate that a call came f
 | `llm.failed` | Generation failed with a display-safe message. |
 | `llm.cancelled` | Generation was cancelled. |
 
-Events may include a `requestID`. Web ignores events for a different active request.
+Events may include a `requestID`. Web ignores events for a different active request and for requests that are no longer active after cancellation, clear, or completion.
 
 ## Snapshot Privacy
 

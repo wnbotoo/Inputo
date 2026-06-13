@@ -312,6 +312,8 @@ func nativeExecutorSnapshotExposesCurrentStateWithoutSecretsOrWindowData() throw
     #expect(snapshot.permissions.contains { $0.id == .screenRecording && $0.state == .notRequested })
     #expect(snapshot.permissions.contains { $0.id == .fileRead && $0.state == .unavailable })
     #expect(snapshot.permissions.contains { $0.id == .fileWrite && $0.state == .unavailable })
+    #expect(snapshot.permissions.first { $0.id == .fileRead }?.detail.contains("native file picker grants") == true)
+    #expect(snapshot.permissions.first { $0.id == .fileWrite }?.detail.contains("native save-panel grants") == true)
     #expect(json.contains("stored-api-key") == false)
     #expect(json.contains("header-secret") == false)
     #expect(json.contains("icon") == false)
