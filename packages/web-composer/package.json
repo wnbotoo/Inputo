@@ -10,9 +10,11 @@
     "dev": "vite --host 127.0.0.1",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "verify": "pnpm run typecheck && pnpm test && pnpm run build && pnpm run check:assets"
+    "typecheck:contracts": "tsc --project ../bridge-contracts-ts/tsconfig.json",
+    "verify": "pnpm run typecheck:contracts && pnpm run typecheck && pnpm test && pnpm run build && pnpm run check:assets"
   },
   "dependencies": {
+    "@inputo/bridge-contracts": "file:../bridge-contracts-ts",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },

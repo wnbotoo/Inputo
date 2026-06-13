@@ -63,6 +63,8 @@ pnpm run verify
 
 `pnpm run verify` typechecks, runs Vitest, rebuilds the production bundle, and confirms the checked-in app assets match the Web source.
 
+The Web verification also typechecks `packages/bridge-contracts-ts`, which owns framework-agnostic bridge DTOs used by the composer.
+
 ## CI
 
 GitHub Actions currently runs:
@@ -115,6 +117,8 @@ For macOS runtime changes, verify:
 - settings save provider config and API key correctly
 - dark and light appearances render legibly
 - no input/output history is persisted
+
+For milestone closure or larger runtime changes, use the fuller checklist in [docs/MILESTONE_RUNTIME_QA.md](MILESTONE_RUNTIME_QA.md).
 
 ## Troubleshooting
 

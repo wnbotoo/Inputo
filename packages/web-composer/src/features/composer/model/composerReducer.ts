@@ -2,10 +2,15 @@ import type {
   ComposerState,
   LLMDeltaPayload,
   LLMFailurePayload,
+  AppAnchorSnapshot,
+  AgentMode,
   NativeEvent,
   NativeSnapshot,
+  NativeToolDescriptor,
+  PermissionSnapshot,
+  SettingsSummary,
   TransformRecipe
-} from "../../../shared/bridge/types";
+} from "@inputo/bridge-contracts";
 
 export const defaultComposerState: ComposerState = {
   draftText: "",
@@ -20,14 +25,24 @@ export const defaultComposerState: ComposerState = {
 };
 
 export interface ComposerViewState {
+  agentMode: AgentMode | null;
   recipes: TransformRecipe[];
   composer: ComposerState;
+  settings: SettingsSummary | null;
+  anchors: AppAnchorSnapshot[];
+  permissions: PermissionSnapshot[];
+  tools: NativeToolDescriptor[];
   activeRequestID: string | null;
 }
 
 export const initialComposerViewState: ComposerViewState = {
+  agentMode: null,
   recipes: [],
   composer: defaultComposerState,
+  settings: null,
+  anchors: [],
+  permissions: [],
+  tools: [],
   activeRequestID: null
 };
 
@@ -49,7 +64,14 @@ export function composerReducer(
     case "applySnapshot":
       return {
         ...state,
+        agentMode: action.snapshot.agentMode ?? state.agentMode,
         recipes: Array.isArray(action.snapshot.recipes) ? action.snapshot.recipes : state.recipes,
+        settings: action.snapshot.settings ?? state.settings,
+        anchors: Array.isArray(action.snapshot.anchors) ? action.snapshot.anchors : state.anchors,
+        permissions: Array.isArray(action.snapshot.permissions)
+          ? action.snapshot.permissions
+          : state.permissions,
+        tools: Array.isArray(action.snapshot.tools) ? action.snapshot.tools : state.tools,
         composer: mergeComposer(state.composer, action.snapshot.composer)
       };
     case "applyComposer":
@@ -63,6 +85,7 @@ export function composerReducer(
         composer: {
           ...state.composer,
           draftText: action.draftText,
+          statusMessage: null,
           errorMessage: null
         }
       };
@@ -72,6 +95,7 @@ export function composerReducer(
         composer: {
           ...state.composer,
           instruction: action.instruction,
+          statusMessage: null,
           errorMessage: null
         }
       };
@@ -80,7 +104,9 @@ export function composerReducer(
         ...state,
         composer: {
           ...state.composer,
-          selectedRecipeID: action.recipeID
+          selectedRecipeID: action.recipeID,
+          statusMessage: null,
+          errorMessage: null
         }
       };
     case "startGeneration":
@@ -164,6 +190,7 @@ export function applyNativeEvent(
         composer: {
           ...state.composer,
           isGenerating: false,
+          statusMessage: null,
           errorMessage: payload?.message ?? "Generation failed."
         }
       };
@@ -179,5 +206,7 @@ export function applyNativeEvent(
           errorMessage: null
         }
       };
+    default:
+      return state;
   }
 }

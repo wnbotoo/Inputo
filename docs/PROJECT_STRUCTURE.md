@@ -31,7 +31,7 @@ tools/
 | `apps/macos/InputoModules/Sources/InputoComposerFeature` | Composer feature, settings UI, app state, bridge dispatcher, and WKWebView host. |
 | `apps/macos/InputoModules/Sources/InputoComposerFeature/Resources/WebComposer` | Checked-in production Web assets copied into the app bundle. |
 | `packages/web-composer` | React + TypeScript + Vite source workspace for the Web composer body. |
-| `packages/bridge-contracts-ts` | Reserved package for shared TypeScript bridge helpers. |
+| `packages/bridge-contracts-ts` | Shared TypeScript bridge DTOs, tool descriptors, event names, and helper types consumed by Web packages. |
 | `apps/windows` | Reserved location for the future WinUI/WebView2 shell. |
 | `contracts` | Language-neutral schemas and JSON fixtures. |
 | `docs` | Architecture and development documentation. |
@@ -47,6 +47,7 @@ flowchart TD
   core["InputoCore"]
   macplatform["InputoMacPlatform"]
   webpkg["packages/web-composer"]
+  bridgepkg["packages/bridge-contracts-ts"]
   assets["Resources/WebComposer"]
   contracts["contracts"]
 
@@ -56,6 +57,8 @@ flowchart TD
   feature --> macplatform
   macplatform --> core
   webpkg --> assets
+  webpkg --> bridgepkg
+  bridgepkg -. fixture compatibility .-> contracts
   feature --> assets
   core -. contract compatibility .-> contracts
 ```
@@ -69,8 +72,9 @@ The macOS build must not depend on `pnpm install`, a Vite dev server, or network
 - macOS system APIs: `InputoMacPlatform`.
 - Composer or settings product behavior: `InputoComposerFeature`.
 - Web composer UI: `packages/web-composer/src/app`, `packages/web-composer/src/features`, and `packages/web-composer/src/shared`.
+- Shared TypeScript bridge contracts: `packages/bridge-contracts-ts`.
 - Generated production Web assets: `InputoComposerFeature/Resources/WebComposer`.
 - Cross-platform schemas or examples: `contracts`.
 - Build or repository automation: `tools`.
 
-Keep new dependencies pointed inward. Web code may depend on bridge types and browser APIs. Native bridge implementations may depend on `AppState`. `InputoCore` should remain free of SwiftUI, AppKit, WebKit, and platform credential APIs.
+Keep new dependencies pointed inward. Web code may depend on `packages/bridge-contracts-ts` and browser APIs. Native bridge implementations may depend on `AppState`. `InputoCore` should remain free of SwiftUI, AppKit, WebKit, and platform credential APIs.

@@ -2,16 +2,17 @@ import {
   BRIDGE_VERSION,
   type BridgeContext,
   type BridgeFailure,
-  type BridgeReceiveFunction,
   type BridgeResult,
   type BridgeTool,
   type BridgeToolCall,
   type NativeEvent
-} from "./types";
+} from "@inputo/bridge-contracts";
 
 interface PendingRequest {
   resolve: (message: BridgeResult) => void;
 }
+
+export type BridgeReceiveFunction = (base64: string) => void;
 
 export interface BridgeRuntime {
   atob(data: string): string;

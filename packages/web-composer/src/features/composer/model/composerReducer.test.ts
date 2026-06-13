@@ -64,5 +64,59 @@ describe("composerReducer", () => {
 
     expect(state.composer.isGenerating).toBe(false);
     expect(state.composer.errorMessage).toBe("Provider is not configured.");
+    expect(state.composer.statusMessage).toBeNull();
+  });
+
+  it("stores provider setup data from native snapshots", () => {
+    const state = composerReducer(initialComposerViewState, {
+      type: "applySnapshot",
+      snapshot: {
+        recipes: [],
+        composer: {},
+        settings: {
+          provider: {
+            baseURL: "https://provider.example",
+            model: "inputo-model",
+            endpointPreview: "https://provider.example/v1/chat/completions",
+            hasAPIKey: false,
+            validationError: null
+          },
+          hasHotKey: true,
+          customRecipeCount: 0
+        },
+        permissions: [
+          {
+            id: "clipboard.write",
+            displayName: "Clipboard",
+            state: "requires_user_action",
+            detail: "Explicit copy only."
+          }
+        ],
+        anchors: [],
+        tools: []
+      }
+    });
+
+    expect(state.settings?.provider.hasAPIKey).toBe(false);
+    expect(state.agentMode).toBeNull();
+    expect(state.permissions[0]?.id).toBe("clipboard.write");
+  });
+
+  it("clears stale status and errors after local edits", () => {
+    const withError = composerReducer(initialComposerViewState, {
+      type: "applyComposer",
+      composer: {
+        statusMessage: "Copied to clipboard.",
+        errorMessage: "Provider failed."
+      }
+    });
+
+    const edited = composerReducer(withError, {
+      type: "localDraft",
+      draftText: "new draft"
+    });
+
+    expect(edited.composer.statusMessage).toBeNull();
+    expect(edited.composer.errorMessage).toBeNull();
   });
 });

@@ -17,12 +17,20 @@ import {
 import type {
   BridgeResult,
   ComposerState,
+  FilePickRequest,
+  FilePickResponse,
+  FileReadTextRequest,
+  FileReadTextResponse,
+  FileWriteTextRequest,
+  FileWriteTextResponse,
   LLMCancelPayload,
   LLMStreamPayload,
   LLMStreamResult,
   NativeEvent,
-  NativeSnapshot
-} from "../../../shared/bridge/types";
+  NativeSnapshot,
+  SettingsSummary,
+  ToolCancelResponse
+} from "@inputo/bridge-contracts";
 import {
   composerReducer,
   initialComposerViewState,
@@ -37,6 +45,17 @@ export interface ComposerStatus {
   isError: boolean;
 }
 
+export interface ProviderSetupNotice {
+  message: string;
+  detail: string;
+}
+
+export interface NativeFileToolsState {
+  label: string;
+  canRead: boolean;
+  canWrite: boolean;
+}
+
 export interface ComposerController {
   viewState: ComposerViewState;
   composer: ComposerState;
@@ -46,10 +65,15 @@ export interface ComposerController {
   canGenerate: boolean;
   isGenerating: boolean;
   status: ComposerStatus;
+  providerSetup: ProviderSetupNotice | null;
+  fileTools: NativeFileToolsState;
   generate: () => Promise<void>;
   cancelGeneration: () => Promise<void>;
   clearComposer: () => Promise<void>;
   copyOutput: () => Promise<void>;
+  openSettings: () => Promise<void>;
+  readTextFile: () => Promise<void>;
+  saveOutputFile: () => Promise<void>;
   markCompositionActivity: (isActive?: boolean) => void;
   handleDraftCompositionEnd: (event: CompositionEvent<HTMLTextAreaElement>) => void;
   handleInstructionCompositionEnd: (event: CompositionEvent<HTMLInputElement>) => void;
@@ -138,11 +162,21 @@ export function useComposerController(): ComposerController {
 
   const generate = useCallback(async () => {
     const current = stateRef.current;
+    const providerSetup = providerSetupNotice(current.settings);
     if (
       current.composer.draftText.trim().length === 0 ||
+      providerSetup ||
       current.composer.isGenerating ||
       current.activeRequestID
     ) {
+      if (providerSetup) {
+        dispatch({
+          type: "applyComposer",
+          composer: {
+            errorMessage: providerSetup.message
+          }
+        });
+      }
       return;
     }
 
@@ -183,9 +217,27 @@ export function useComposerController(): ComposerController {
     if (!requestID) {
       return;
     }
-    await inputoBridge.callTool<LLMCancelPayload, Partial<ComposerState>>("llm.cancel", {
+    const response = await inputoBridge.callTool<LLMCancelPayload, ToolCancelResponse>("llm.cancel", {
       requestID
     });
+    if (response.ok && response.payload.didCancel) {
+      dispatch({
+        type: "applyComposer",
+        composer: {
+          isGenerating: false,
+          statusMessage: "Generation cancelled."
+        }
+      });
+      dispatch({ type: "clearActiveRequest" });
+    } else if (!response.ok) {
+      dispatch({
+        type: "applyComposer",
+        composer: {
+          isGenerating: false,
+          errorMessage: response.error.message
+        }
+      });
+    }
   }, []);
 
   const clearComposer = useCallback(async () => {
@@ -206,6 +258,134 @@ export function useComposerController(): ComposerController {
     );
     applyToolComposerResult(response);
   }, [applyToolComposerResult]);
+
+  const openSettings = useCallback(async () => {
+    const response = await inputoBridge.callTool<Record<string, never>, unknown>(
+      "settings.open",
+      {},
+      USER_ACTION_CONTEXT
+    );
+    if (!response.ok) {
+      dispatch({
+        type: "applyComposer",
+        composer: {
+          errorMessage: response.error.message
+        }
+      });
+    }
+  }, []);
+
+  const applyDraftFromFile = useCallback((text: string, displayName: string) => {
+    dispatch({ type: "localDraft", draftText: text });
+    inputoBridge
+      .callTool<{ draftText: string }, Partial<ComposerState>>("composer.setDraft", { draftText: text })
+      .then((response) => {
+        if (response.ok) {
+          dispatch({
+            type: "applyComposer",
+            composer: {
+              ...response.payload,
+              statusMessage: `Loaded ${displayName}.`,
+              errorMessage: null
+            }
+          });
+        } else {
+          dispatch({
+            type: "applyComposer",
+            composer: {
+              errorMessage: response.error.message
+            }
+          });
+        }
+      });
+  }, []);
+
+  const readTextFile = useCallback(async () => {
+    const currentFileTools = fileToolsState(stateRef.current);
+    if (!currentFileTools.canRead) {
+      return;
+    }
+    const pickResponse = await inputoBridge.callTool<FilePickRequest, FilePickResponse>(
+      "files.pickReadable",
+      {
+        allowedContentTypes: ["public.text"],
+        allowsMultipleSelection: false,
+        suggestedFileName: null
+      },
+      USER_ACTION_CONTEXT
+    );
+    if (!pickResponse.ok) {
+      dispatch({ type: "applyComposer", composer: { errorMessage: pickResponse.error.message } });
+      return;
+    }
+    const grant = pickResponse.payload.grants[0];
+    if (!grant) {
+      dispatch({ type: "applyComposer", composer: { errorMessage: "No readable file was selected." } });
+      return;
+    }
+    const readResponse = await inputoBridge.callTool<FileReadTextRequest, FileReadTextResponse>(
+      "files.readText",
+      {
+        grantID: grant.id,
+        maxBytes: 1_048_576,
+        encoding: "utf-8"
+      },
+      USER_ACTION_CONTEXT
+    );
+    if (readResponse.ok) {
+      applyDraftFromFile(readResponse.payload.text, readResponse.payload.displayName);
+    } else {
+      dispatch({ type: "applyComposer", composer: { errorMessage: readResponse.error.message } });
+    }
+  }, [applyDraftFromFile]);
+
+  const saveOutputFile = useCallback(async () => {
+    const current = stateRef.current;
+    const currentFileTools = fileToolsState(current);
+    const text = current.composer.generatedOutput;
+    if (!currentFileTools.canWrite || text.trim().length === 0) {
+      return;
+    }
+    const pickResponse = await inputoBridge.callTool<FilePickRequest, FilePickResponse>(
+      "files.pickWritable",
+      {
+        allowedContentTypes: ["public.text"],
+        allowsMultipleSelection: false,
+        suggestedFileName: "inputo-output.txt"
+      },
+      USER_ACTION_CONTEXT
+    );
+    if (!pickResponse.ok) {
+      dispatch({ type: "applyComposer", composer: { errorMessage: pickResponse.error.message } });
+      return;
+    }
+    const grant = pickResponse.payload.grants[0];
+    if (!grant) {
+      dispatch({ type: "applyComposer", composer: { errorMessage: "No write target was selected." } });
+      return;
+    }
+    const writeResponse = await inputoBridge.callTool<FileWriteTextRequest, FileWriteTextResponse>(
+      "files.writeText",
+      {
+        grantID: grant.id,
+        text,
+        encoding: "utf-8",
+        overwrite: true
+      },
+      USER_ACTION_CONTEXT
+    );
+    if (writeResponse.ok) {
+      dispatch({
+        type: "applyComposer",
+        composer: {
+          statusMessage: `Saved ${writeResponse.payload.displayName}.`,
+          errorMessage: null
+        }
+      });
+    } else {
+      dispatch({ type: "applyComposer", composer: { errorMessage: writeResponse.error.message } });
+    }
+  }, []);
 
   useEffect(() => {
     inputoBridge.installGlobalReceiver(window);
@@ -281,7 +461,16 @@ export function useComposerController(): ComposerController {
   const previewText = hasOutput
     ? composer.generatedOutput
     : (composer.isGenerating ? "Generating..." : "No preview yet.");
+  const providerSetup = useMemo(
+    () => providerSetupNotice(viewState.settings),
+    [viewState.settings]
+  );
+  const fileTools = useMemo(
+    () => fileToolsState(viewState),
+    [viewState]
+  );
   const canGenerate = composer.draftText.trim().length > 0 &&
+    !providerSetup &&
     !composer.isGenerating &&
     !viewState.activeRequestID;
   const isGenerating = composer.isGenerating || Boolean(viewState.activeRequestID);
@@ -360,10 +549,15 @@ export function useComposerController(): ComposerController {
     canGenerate,
     isGenerating,
     status,
+    providerSetup,
+    fileTools,
     generate,
     cancelGeneration,
     clearComposer,
     copyOutput,
+    openSettings,
+    readTextFile,
+    saveOutputFile,
     markCompositionActivity,
     handleDraftCompositionEnd,
     handleInstructionCompositionEnd,
@@ -371,5 +565,43 @@ export function useComposerController(): ComposerController {
     handleInstructionChange,
     handleRecipeChange,
     handleBeforeInput
+  };
+}
+
+function providerSetupNotice(settings: SettingsSummary | null): ProviderSetupNotice | null {
+  if (!settings) {
+    return null;
+  }
+  if (settings.provider.validationError) {
+    return {
+      message: settings.provider.validationError,
+      detail: "Open Settings to update the provider URL or model."
+    };
+  }
+  if (!settings.provider.hasAPIKey) {
+    return {
+      message: "Add an API key in Settings before generating.",
+      detail: "The API key stays in the native keychain and is never exposed to Web."
+    };
+  }
+  return null;
+}
+
+function fileToolsState(state: ComposerViewState): NativeFileToolsState {
+  const readPermission = state.permissions.find((permission) => permission.id === "file.read");
+  const writePermission = state.permissions.find((permission) => permission.id === "file.write");
+  const canRead = readPermission?.state === "available" || readPermission?.state === "requires_user_action";
+  const canWrite = writePermission?.state === "available" || writePermission?.state === "requires_user_action";
+  if (canRead || canWrite) {
+    return {
+      label: "Files require native confirmation",
+      canRead,
+      canWrite
+    };
+  }
+  return {
+    label: "Files unavailable",
+    canRead: false,
+    canWrite: false
   };
 }

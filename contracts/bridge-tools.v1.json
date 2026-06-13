@@ -1,0 +1,271 @@
+{
+  "version": 1,
+  "tools": [
+    {
+      "id": "app.hideComposer",
+      "displayName": "Hide Composer",
+      "description": "Hide the current native composer panel after an explicit user action.",
+      "effect": "app_activation",
+      "minimumAgentMode": "manual_transform",
+      "requiresExplicitUserAction": true,
+      "requiresPerCallConfirmation": false,
+      "supportsCancellation": false,
+      "streams": false
+    },
+    {
+      "id": "app.snapshot",
+      "displayName": "Get App Snapshot",
+      "description": "Read the current native executor snapshot without secrets, paths, screenshots, or window titles.",
+      "effect": "read_state",
+      "minimumAgentMode": "manual_transform",
+      "requiresExplicitUserAction": false,
+      "requiresPerCallConfirmation": false,
+      "supportsCancellation": false,
+      "streams": false
+    },
+    {
+      "id": "composer.getState",
+      "displayName": "Get Composer State",
+      "description": "Read the current transient composer state snapshot.",
+      "effect": "read_state",
+      "minimumAgentMode": "manual_transform",
+      "requiresExplicitUserAction": false,
+      "requiresPerCallConfirmation": false,
+      "supportsCancellation": false,
+      "streams": false
+    },
+    {
+      "id": "composer.setDraft",
+      "displayName": "Set Draft",
+      "description": "Replace the current transient composer draft.",
+      "effect": "write_transient_state",
+      "minimumAgentMode": "manual_transform",
+      "requiresExplicitUserAction": false,
+      "requiresPerCallConfirmation": false,
+      "supportsCancellation": false,
+      "streams": false
+    },
+    {
+      "id": "composer.setInstruction",
+      "displayName": "Set Instruction",
+      "description": "Replace the current transient composer instruction.",
+      "effect": "write_transient_state",
+      "minimumAgentMode": "manual_transform",
+      "requiresExplicitUserAction": false,
+      "requiresPerCallConfirmation": false,
+      "supportsCancellation": false,
+      "streams": false
+    },
+    {
+      "id": "composer.selectRecipe",
+      "displayName": "Select Recipe",
+      "description": "Select one of the current transform recipes.",
+      "effect": "write_transient_state",
+      "minimumAgentMode": "manual_transform",
+      "requiresExplicitUserAction": false,
+      "requiresPerCallConfirmation": false,
+      "supportsCancellation": false,
+      "streams": false
+    },
+    {
+      "id": "composer.clear",
+      "displayName": "Clear Composer",
+      "description": "Clear the current transient composer session.",
+      "effect": "write_transient_state",
+      "minimumAgentMode": "manual_transform",
+      "requiresExplicitUserAction": true,
+      "requiresPerCallConfirmation": false,
+      "supportsCancellation": false,
+      "streams": false
+    },
+    {
+      "id": "llm.chat",
+      "displayName": "Generate Text",
+      "description": "Ask native to run one OpenAI-compatible chat completion with stored provider settings.",
+      "effect": "provider_network",
+      "minimumAgentMode": "manual_transform",
+      "requiresExplicitUserAction": true,
+      "requiresPerCallConfirmation": false,
+      "supportsCancellation": true,
+      "streams": false
+    },
+    {
+      "id": "llm.stream",
+      "displayName": "Stream Text",
+      "description": "Ask native to stream an OpenAI-compatible chat completion with stored provider settings.",
+      "effect": "provider_network",
+      "minimumAgentMode": "manual_transform",
+      "requiresExplicitUserAction": true,
+      "requiresPerCallConfirmation": false,
+      "supportsCancellation": true,
+      "streams": true
+    },
+    {
+      "id": "llm.cancel",
+      "displayName": "Cancel Generation",
+      "description": "Cancel an in-flight native LLM request.",
+      "effect": "cancellation",
+      "minimumAgentMode": "manual_transform",
+      "requiresExplicitUserAction": false,
+      "requiresPerCallConfirmation": false,
+      "supportsCancellation": false,
+      "streams": false
+    },
+    {
+      "id": "clipboard.copyGeneratedOutput",
+      "displayName": "Copy Output",
+      "description": "Write the current generated output to the clipboard after an explicit Copy action.",
+      "effect": "clipboard_write",
+      "minimumAgentMode": "manual_transform",
+      "requiresExplicitUserAction": true,
+      "requiresPerCallConfirmation": false,
+      "supportsCancellation": false,
+      "streams": false
+    },
+    {
+      "id": "appAnchors.list",
+      "displayName": "List App Anchors",
+      "description": "Read app-level jump anchors without window titles or screenshots.",
+      "effect": "read_state",
+      "minimumAgentMode": "manual_transform",
+      "requiresExplicitUserAction": false,
+      "requiresPerCallConfirmation": false,
+      "supportsCancellation": false,
+      "streams": false
+    },
+    {
+      "id": "appAnchors.activate",
+      "displayName": "Activate App Anchor",
+      "description": "Switch back to a selected app-level anchor.",
+      "effect": "app_activation",
+      "minimumAgentMode": "manual_transform",
+      "requiresExplicitUserAction": true,
+      "requiresPerCallConfirmation": false,
+      "supportsCancellation": false,
+      "streams": false
+    },
+    {
+      "id": "settings.open",
+      "displayName": "Open Settings",
+      "description": "Ask native to open the settings window.",
+      "effect": "settings",
+      "minimumAgentMode": "manual_transform",
+      "requiresExplicitUserAction": true,
+      "requiresPerCallConfirmation": false,
+      "supportsCancellation": false,
+      "streams": false
+    },
+    {
+      "id": "settings.summary",
+      "displayName": "Read Settings Summary",
+      "description": "Read a non-secret settings summary.",
+      "effect": "read_state",
+      "minimumAgentMode": "manual_transform",
+      "requiresExplicitUserAction": false,
+      "requiresPerCallConfirmation": false,
+      "supportsCancellation": false,
+      "streams": false
+    },
+    {
+      "id": "permissions.status",
+      "displayName": "Read Permission Status",
+      "description": "Read native permission and privacy status.",
+      "effect": "read_state",
+      "minimumAgentMode": "manual_transform",
+      "requiresExplicitUserAction": false,
+      "requiresPerCallConfirmation": false,
+      "supportsCancellation": false,
+      "streams": false
+    },
+    {
+      "id": "permissions.request",
+      "displayName": "Request Permission",
+      "description": "Ask native to start a platform permission flow.",
+      "effect": "permission_prompt",
+      "minimumAgentMode": "manual_transform",
+      "requiresExplicitUserAction": true,
+      "requiresPerCallConfirmation": true,
+      "supportsCancellation": false,
+      "streams": false
+    },
+    {
+      "id": "files.pickReadable",
+      "displayName": "Choose Readable File",
+      "description": "Ask native to open a file picker and issue an ephemeral read grant for one user-selected file.",
+      "effect": "file_picker",
+      "minimumAgentMode": "assisted_workflow",
+      "requiresExplicitUserAction": true,
+      "requiresPerCallConfirmation": true,
+      "supportsCancellation": false,
+      "streams": false
+    },
+    {
+      "id": "files.readText",
+      "displayName": "Read Text File",
+      "description": "Ask native to read text from a file grant issued by a native file picker.",
+      "effect": "file_read",
+      "minimumAgentMode": "assisted_workflow",
+      "requiresExplicitUserAction": true,
+      "requiresPerCallConfirmation": true,
+      "supportsCancellation": false,
+      "streams": false
+    },
+    {
+      "id": "files.pickWritable",
+      "displayName": "Choose Write Target",
+      "description": "Ask native to open a save panel and issue an ephemeral write grant for one user-approved file target.",
+      "effect": "file_picker",
+      "minimumAgentMode": "assisted_workflow",
+      "requiresExplicitUserAction": true,
+      "requiresPerCallConfirmation": true,
+      "supportsCancellation": false,
+      "streams": false
+    },
+    {
+      "id": "files.writeText",
+      "displayName": "Write Text File",
+      "description": "Ask native to write text to a file grant issued by a native save panel.",
+      "effect": "file_write",
+      "minimumAgentMode": "assisted_workflow",
+      "requiresExplicitUserAction": true,
+      "requiresPerCallConfirmation": true,
+      "supportsCancellation": false,
+      "streams": false
+    },
+    {
+      "id": "network.fetch",
+      "displayName": "Fetch Network Resource",
+      "description": "Ask native to execute a manifest-governed network request.",
+      "effect": "network",
+      "minimumAgentMode": "assisted_workflow",
+      "requiresExplicitUserAction": true,
+      "requiresPerCallConfirmation": true,
+      "supportsCancellation": true,
+      "streams": false
+    },
+    {
+      "id": "tools.list",
+      "displayName": "List Tools",
+      "description": "Read native-hosted tool descriptors and policies.",
+      "effect": "read_state",
+      "minimumAgentMode": "manual_transform",
+      "requiresExplicitUserAction": false,
+      "requiresPerCallConfirmation": false,
+      "supportsCancellation": false,
+      "streams": false
+    }
+  ],
+  "events": [
+    "llm.started",
+    "llm.delta",
+    "llm.completed",
+    "llm.failed",
+    "llm.cancelled",
+    "tool.started",
+    "tool.progress",
+    "tool.resultDelta",
+    "tool.completed",
+    "tool.failed",
+    "tool.cancelled"
+  ]
+}

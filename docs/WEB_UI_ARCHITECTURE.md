@@ -52,6 +52,8 @@ Web renders:
 - Generate, Cancel, Clear, and Copy controls
 - generation status and display-safe errors
 - native streaming deltas
+- provider setup state from a non-secret native summary
+- native file-tool availability and grant-based read/write actions when policy allows them
 
 Native renders:
 
@@ -64,7 +66,7 @@ Native renders:
 
 ## Bridge Rules
 
-Web must use the bridge client. It should not call `window.webkit` directly from components. Feature hooks should call typed functions in `src/shared/bridge/bridgeClient.ts` and keep DTOs in `src/shared/bridge/types.ts`.
+Web must use the bridge client. It should not call `window.webkit` directly from components. Feature hooks should call typed functions in `src/shared/bridge/bridgeClient.ts`; framework-agnostic bridge DTOs live in `packages/bridge-contracts-ts`.
 
 All native calls should be:
 
@@ -74,6 +76,8 @@ All native calls should be:
 - cancellation-aware where relevant
 - explicit about user-action context for side effects
 - resilient to display-safe errors
+
+Web cannot grant itself elevated authority. For per-call confirmed tools, the native dispatcher invokes native confirmation before executing. Web can render proposals or buttons, but the confirmation decision remains native-mediated.
 
 ## Web Agent Boundary
 

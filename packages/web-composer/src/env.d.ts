@@ -1,4 +1,8 @@
-import type { BridgeReceiveFunction, FocusFunction, ThemeFunction } from "./shared/bridge/types";
+import type { ThemeName } from "@inputo/bridge-contracts";
+import type { BridgeReceiveFunction } from "./shared/bridge/bridgeClient";
+
+export type ThemeFunction = (theme: ThemeName | string) => void;
+export type FocusFunction = () => void;
 
 declare global {
   interface Window {

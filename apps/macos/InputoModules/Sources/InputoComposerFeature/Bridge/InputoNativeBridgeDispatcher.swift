@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import InputoCore
 import InputoMacPlatform
@@ -10,6 +11,19 @@ public protocol InputoFileToolServicing {
     func writeText(_ request: InputoFileWriteTextRequest) async throws -> InputoFileWriteTextResponse
 }
 
+public struct InputoNativeConfirmationRequest: Sendable {
+    public var tool: InputoNativeToolDescriptor
+
+    public init(tool: InputoNativeToolDescriptor) {
+        self.tool = tool
+    }
+}
+
+@MainActor
+public protocol InputoNativeConfirmationServicing {
+    func confirm(_ request: InputoNativeConfirmationRequest) async -> Bool
+}
+
 @MainActor
 public final class InputoNativeBridgeDispatcher {
     private struct ActiveBridgeRequest {
@@ -20,6 +34,7 @@ public final class InputoNativeBridgeDispatcher {
     private let appState: AppState
     private let agentMode: InputoAgentMode
     private let fileTools: any InputoFileToolServicing
+    private let confirmationService: any InputoNativeConfirmationServicing
     private let eventEmitter: InputoBridgeEventEmitter
     private let decoder: JSONDecoder
     private let encoder: JSONEncoder
@@ -36,6 +51,7 @@ public final class InputoNativeBridgeDispatcher {
             appState: appState,
             agentMode: agentMode,
             fileTools: LiveBridgeFileToolService(),
+            confirmationService: LiveBridgeConfirmationService(),
             eventEmitter: eventEmitter,
             decoder: decoder,
             encoder: encoder
@@ -46,6 +62,7 @@ public final class InputoNativeBridgeDispatcher {
         appState: AppState,
         agentMode: InputoAgentMode = .manualTransform,
         fileTools: any InputoFileToolServicing,
+        confirmationService: any InputoNativeConfirmationServicing = LiveBridgeConfirmationService(),
         eventEmitter: InputoBridgeEventEmitter = .none,
         decoder: JSONDecoder = JSONDecoder(),
         encoder: JSONEncoder = JSONEncoder()
@@ -53,6 +70,7 @@ public final class InputoNativeBridgeDispatcher {
         self.appState = appState
         self.agentMode = agentMode
         self.fileTools = fileTools
+        self.confirmationService = confirmationService
         self.eventEmitter = eventEmitter
         self.decoder = decoder
         self.encoder = encoder
@@ -114,6 +132,25 @@ public final class InputoNativeBridgeDispatcher {
 
         if let policyError = policyError(for: descriptor, context: raw.context) {
             return failure(id: requestID, error: policyError)
+        }
+
+        if toolID == .networkFetch {
+            return failure(
+                id: requestID,
+                code: .policyViolation,
+                message: "network.fetch is deferred until manifest-governed network policy is implemented."
+            )
+        }
+
+        if descriptor.requiresPerCallConfirmation {
+            let didConfirm = await confirmationService.confirm(InputoNativeConfirmationRequest(tool: descriptor))
+            guard didConfirm else {
+                return failure(
+                    id: requestID,
+                    code: .permissionDenied,
+                    message: "\(descriptor.id.rawValue) requires native confirmation."
+                )
+            }
         }
 
         switch toolID {
@@ -182,11 +219,7 @@ public final class InputoNativeBridgeDispatcher {
                 return try await self.fileTools.writeText(request)
             }
         case .networkFetch:
-            return failure(
-                id: requestID,
-                code: .policyViolation,
-                message: "network.fetch is deferred until manifest-governed network policy is implemented."
-            )
+            fatalError("network.fetch must be denied before dispatch.")
         }
     }
 
@@ -442,13 +475,6 @@ public final class InputoNativeBridgeDispatcher {
             )
         }
 
-        if descriptor.requiresPerCallConfirmation && !context.confirmed {
-            return InputoNativeToolError(
-                code: .permissionDenied,
-                message: "\(descriptor.id.rawValue) requires per-call confirmation."
-            )
-        }
-
         return nil
     }
 
@@ -559,6 +585,20 @@ private struct LiveBridgeFileToolService: InputoFileToolServicing {
 
     func writeText(_ request: InputoFileWriteTextRequest) async throws -> InputoFileWriteTextResponse {
         try service.writeText(request)
+    }
+}
+
+public struct LiveBridgeConfirmationService: InputoNativeConfirmationServicing {
+    public init() {}
+
+    public func confirm(_ request: InputoNativeConfirmationRequest) async -> Bool {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "Allow \(request.tool.displayName)?"
+        alert.informativeText = request.tool.description
+        alert.addButton(withTitle: "Allow")
+        alert.addButton(withTitle: "Cancel")
+        return alert.runModal() == .alertFirstButtonReturn
     }
 }
 

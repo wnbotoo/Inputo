@@ -64,6 +64,8 @@ Each native tool has policy metadata:
 
 Web cannot choose its own privileges. The dispatcher enforces policy before calling `AppState` or platform services.
 
+For tools marked with per-call confirmation, Web may indicate that a call came from a visible user action, but it cannot self-certify confirmation. The native dispatcher invokes a native confirmation service before execution. In the live macOS app this is a native alert; tests inject allow/deny confirmation services.
+
 ## Composer Tools
 
 | Tool | Purpose | Side effect |
@@ -86,10 +88,10 @@ Web cannot choose its own privileges. The dispatcher enforces policy before call
 | `settings.open` | Open the native settings window. | UI side effect |
 | `permissions.status` | Return current permission/capability state. | Read-only |
 | `permissions.request` | Ask native to request a supported permission. | Permission prompt |
-| `file.pickReadGrant` | Open a native picker and create a read grant. | User-mediated file grant |
-| `file.readText` | Read text through an existing grant. | Grant-scoped file read |
-| `file.pickWriteGrant` | Open a native save panel and create a write grant. | User-mediated file grant |
-| `file.writeText` | Write text through an existing grant. | Grant-scoped file write |
+| `files.pickReadable` | Open a native picker and create a read grant. | User-mediated file grant |
+| `files.readText` | Read text through an existing grant. | Grant-scoped file read |
+| `files.pickWritable` | Open a native save panel and create a write grant. | User-mediated file grant |
+| `files.writeText` | Write text through an existing grant. | Grant-scoped file write |
 | `network.fetch` | Reserved and currently denied. | Disabled |
 
 ## Events
@@ -121,6 +123,12 @@ File tools are grant-based. Web does not send arbitrary local paths to native. A
 
 This keeps file access user-mediated and lets each platform implement its own permission model.
 
+The current Web composer can request a readable text grant and load the resulting text into the draft, or request a writable text grant and save the generated preview. The bridge result includes safe display metadata such as display name, content type, byte count, and grant ID; local paths remain native-owned.
+
+## Drift Checks
+
+Tool descriptors and event names are mirrored in `contracts/bridge-tools.v1.json`. Swift tests decode that fixture and compare it with `InputoNativeToolDescriptor.v1DefaultTools`; Web tests compare the same fixture with `packages/bridge-contracts-ts`. Contract changes should update Swift DTOs, TypeScript DTOs, fixtures, and docs together.
+
 ## Error Codes
 
 Common safe error codes include:
@@ -140,7 +148,9 @@ Native errors should be redacted before crossing the bridge. Provider URLs, API 
 ## Implementation Locations
 
 - DTOs and tool descriptors: `apps/macos/InputoModules/Sources/InputoCore/Models/NativeExecutorContract.swift`
+- Shared TypeScript bridge contracts: `packages/bridge-contracts-ts/src/index.ts`
+- Bridge descriptor fixture: `contracts/bridge-tools.v1.json`
 - Bridge dispatcher: `apps/macos/InputoModules/Sources/InputoComposerFeature/Bridge/InputoNativeBridgeDispatcher.swift`
 - WKWebView host boundary: `apps/macos/InputoModules/Sources/InputoComposerFeature/Bridge/InputoNativeBridgeHost.swift`
 - Web bridge client: `packages/web-composer/src/shared/bridge/bridgeClient.ts`
-- Web bridge types: `packages/web-composer/src/shared/bridge/types.ts`
+- Web composer bridge drift test: `packages/web-composer/src/shared/bridge/contractDrift.test.ts`

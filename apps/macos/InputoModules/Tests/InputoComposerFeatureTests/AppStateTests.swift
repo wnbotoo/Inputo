@@ -760,14 +760,15 @@ func bridgeDispatcherRunsGrantBasedFileToolsWithConfirmation() async throws {
     let dispatcher = InputoNativeBridgeDispatcher(
         appState: makeHarness().state,
         agentMode: .assistedWorkflow,
-        fileTools: fileTools
+        fileTools: fileTools,
+        confirmationService: FakeConfirmationService(allows: true)
     )
 
     let readable = try await dispatch(
         tool: .filesPickReadable,
         id: "pick-readable-request",
         dispatcher: dispatcher,
-        context: .confirmedUserAction,
+        context: .userInitiated,
         payload: InputoFilePickRequest(),
         payloadType: InputoFilePickResponse.self
     )
@@ -775,7 +776,7 @@ func bridgeDispatcherRunsGrantBasedFileToolsWithConfirmation() async throws {
         tool: .filesReadText,
         id: "read-file-request",
         dispatcher: dispatcher,
-        context: .confirmedUserAction,
+        context: .userInitiated,
         payload: InputoFileReadTextRequest(grantID: "read-grant"),
         payloadType: InputoFileReadTextResponse.self
     )
@@ -783,7 +784,7 @@ func bridgeDispatcherRunsGrantBasedFileToolsWithConfirmation() async throws {
         tool: .filesPickWritable,
         id: "pick-writable-request",
         dispatcher: dispatcher,
-        context: .confirmedUserAction,
+        context: .userInitiated,
         payload: InputoFilePickRequest(suggestedFileName: "out.txt"),
         payloadType: InputoFilePickResponse.self
     )
@@ -791,7 +792,7 @@ func bridgeDispatcherRunsGrantBasedFileToolsWithConfirmation() async throws {
         tool: .filesWriteText,
         id: "write-file-request",
         dispatcher: dispatcher,
-        context: .confirmedUserAction,
+        context: .userInitiated,
         payload: InputoFileWriteTextRequest(grantID: "write-grant", text: "Saved", overwrite: true)
     )
     let write = try JSONDecoder().decode(
@@ -815,14 +816,15 @@ func bridgeDispatcherPropagatesFileToolErrorsSafely() async throws {
     let dispatcher = InputoNativeBridgeDispatcher(
         appState: makeHarness().state,
         agentMode: .assistedWorkflow,
-        fileTools: fileTools
+        fileTools: fileTools,
+        confirmationService: FakeConfirmationService(allows: true)
     )
 
     let response = try await errorResponse(
         try request(
             tool: .filesReadText,
             id: "bad-grant-request",
-            context: .confirmedUserAction,
+            context: .userInitiated,
             payload: InputoFileReadTextRequest(grantID: "missing-grant")
         ),
         dispatcher: dispatcher
@@ -840,7 +842,8 @@ func bridgeDispatcherRejectsFileToolsWithoutAssistedModeOrConfirmation() async t
     let assistedDispatcher = InputoNativeBridgeDispatcher(
         appState: harness.state,
         agentMode: .assistedWorkflow,
-        fileTools: FakeFileToolService()
+        fileTools: FakeFileToolService(),
+        confirmationService: FakeConfirmationService(allows: false)
     )
 
     let unavailableInManual = try await errorResponse(
@@ -852,7 +855,7 @@ func bridgeDispatcherRejectsFileToolsWithoutAssistedModeOrConfirmation() async t
         ),
         dispatcher: manualDispatcher
     )
-    let missingConfirmation = try await errorResponse(
+    let deniedConfirmation = try await errorResponse(
         try request(
             tool: .filesReadText,
             id: "unconfirmed-file-request",
@@ -863,7 +866,7 @@ func bridgeDispatcherRejectsFileToolsWithoutAssistedModeOrConfirmation() async t
     )
 
     #expect(unavailableInManual.error?.code == .permissionDenied)
-    #expect(missingConfirmation.error?.code == .permissionDenied)
+    #expect(deniedConfirmation.error?.code == .permissionDenied)
 }
 
 @Test
@@ -1212,6 +1215,15 @@ private final class FakeFileToolService: InputoFileToolServicing {
             displayName: "output.txt",
             byteCount: request.text.utf8.count
         )
+    }
+}
+
+@MainActor
+private struct FakeConfirmationService: InputoNativeConfirmationServicing {
+    var allows: Bool
+
+    func confirm(_ request: InputoNativeConfirmationRequest) async -> Bool {
+        allows
     }
 }
 

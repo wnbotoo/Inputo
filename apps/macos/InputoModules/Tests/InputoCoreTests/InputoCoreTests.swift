@@ -81,6 +81,34 @@ func nativeExecutorDefaultToolsAreConservativeInManualMode() throws {
 }
 
 @Test
+func nativeExecutorDefaultToolsMatchSharedBridgeFixture() throws {
+    struct BridgeToolFixture: Decodable {
+        var version: Int
+        var tools: [InputoNativeToolDescriptor]
+        var events: [InputoToolEventName]
+    }
+
+    let fixtureURL = try findRepositoryFile("contracts/bridge-tools.v1.json")
+    let fixture = try JSONDecoder().decode(BridgeToolFixture.self, from: Data(contentsOf: fixtureURL))
+
+    #expect(fixture.version == InputoBridgeContract.version)
+    #expect(fixture.tools == InputoNativeToolDescriptor.v1DefaultTools)
+    #expect(fixture.events == [
+        .llmStarted,
+        .llmDelta,
+        .llmCompleted,
+        .llmFailed,
+        .llmCancelled,
+        .toolStarted,
+        .toolProgress,
+        .toolResultDelta,
+        .toolCompleted,
+        .toolFailed,
+        .toolCancelled
+    ])
+}
+
+@Test
 func nativeFileToolDTOsUseGrantsInsteadOfPaths() throws {
     let grant = InputoFileGrantSnapshot(
         id: "grant-1",
@@ -106,6 +134,18 @@ func nativeFileToolDTOsUseGrantsInsteadOfPaths() throws {
     #expect(json.contains("draft.txt"))
     #expect(json.contains("path") == false)
     #expect(json.contains("/Users/") == false)
+}
+
+private func findRepositoryFile(_ relativePath: String, from filePath: String = #filePath) throws -> URL {
+    var directory = URL(fileURLWithPath: filePath).deletingLastPathComponent()
+    for _ in 0..<12 {
+        let candidate = directory.appendingPathComponent(relativePath)
+        if FileManager.default.fileExists(atPath: candidate.path) {
+            return candidate
+        }
+        directory.deleteLastPathComponent()
+    }
+    throw CocoaError(.fileNoSuchFile)
 }
 
 @Test

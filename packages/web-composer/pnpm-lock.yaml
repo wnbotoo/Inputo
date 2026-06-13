@@ -1,4 +1,3 @@
----
 lockfileVersion: '9.0'
 
 settings:
@@ -9,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@inputo/bridge-contracts':
+        specifier: file:../bridge-contracts-ts
+        version: file:../bridge-contracts-ts
       react:
         specifier: ^19.2.7
         version: 19.2.7
@@ -204,6 +206,9 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@inputo/bridge-contracts@file:../bridge-contracts-ts':
+    resolution: {directory: ../bridge-contracts-ts, type: directory}
 
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
@@ -770,6 +775,8 @@ snapshots:
 
   '@esbuild/win32-x64@0.27.7':
     optional: true
+
+  '@inputo/bridge-contracts@file:../bridge-contracts-ts': {}
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
 
