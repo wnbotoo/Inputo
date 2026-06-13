@@ -6,7 +6,6 @@ final class StatusBarController {
 
     init(onShow: @escaping @MainActor () -> Void, onSettings: @escaping @MainActor () -> Void, onQuit: @escaping @MainActor () -> Void) {
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.title = "Inputo"
         item.button?.image = NSImage(systemSymbolName: "sparkles", accessibilityDescription: "Inputo")
         item.button?.imagePosition = .imageLeading
 
