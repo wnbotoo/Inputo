@@ -51,6 +51,52 @@ describe("composerReducer", () => {
     expect(completed.composer.statusMessage).toBe("Ready to copy.");
   });
 
+  it("accepts native-started streaming events without a Web-originated request", () => {
+    const started = composerReducer(initialComposerViewState, {
+      type: "nativeEvent",
+      event: {
+        version: 1,
+        type: "event",
+        event: "llm.started",
+        requestID: "native-request"
+      }
+    });
+    const withDelta = composerReducer(started, {
+      type: "nativeEvent",
+      event: {
+        version: 1,
+        type: "event",
+        event: "llm.delta",
+        requestID: "native-request",
+        payload: { text: "Native output" }
+      }
+    });
+
+    expect(started.activeRequestID).toBe("native-request");
+    expect(withDelta.composer.generatedOutput).toBe("Native output");
+  });
+
+  it("stores unknown native commands for the Web preview runtime", () => {
+    const state = composerReducer(initialComposerViewState, {
+      type: "nativeEvent",
+      event: {
+        version: 1,
+        type: "event",
+        event: "command.received",
+        payload: {
+          commandName: "custom",
+          inputText: "/custom Build a widget",
+          bodyText: "Build a widget",
+          arguments: ["Build", "a", "widget"]
+        }
+      }
+    });
+
+    expect(state.routedCommand?.commandName).toBe("custom");
+    expect(state.routedCommand?.bodyText).toBe("Build a widget");
+    expect(state.composer.statusMessage).toBe("Received /custom.");
+  });
+
   it("ignores late stream events after a request is no longer active", () => {
     const started = composerReducer(initialComposerViewState, {
       type: "startGeneration",

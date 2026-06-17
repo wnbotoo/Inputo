@@ -4,7 +4,7 @@ Thanks for helping make Inputo better. This project is a privacy-conscious macOS
 
 ## Ways to Contribute
 
-- Fix bugs in the macOS app, Swift package modules, Web composer, bridge contracts, or documentation.
+- Fix bugs in the macOS app, Swift package modules, Web preview, bridge contracts, or documentation.
 - Improve accessibility, keyboard support, IME behavior, and provider error states.
 - Add tests or fixtures that make native/Web contract drift harder.
 - Propose product changes through an issue before implementing large behavior changes.
@@ -24,7 +24,7 @@ Prerequisites:
 - macOS with Xcode and SwiftPM on `PATH`.
 - Node.js and pnpm 11 when editing `packages/web-composer`.
 
-Install Web composer dependencies only if you need to edit or regenerate the Web assets:
+Install Web preview dependencies only if you need to edit or regenerate the Web assets:
 
 ```bash
 pnpm --dir packages/web-composer install
@@ -51,7 +51,7 @@ swift test --package-path apps/macos/InputoModules
 xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build
 ```
 
-Run this before opening a pull request that touches the Web composer:
+Run this before opening a pull request that touches the Web preview:
 
 ```bash
 pnpm --dir packages/web-composer run verify
@@ -75,6 +75,6 @@ Inputo uses a thin Xcode app target and a local Swift package:
 - `InputoCore`: pure contracts, recipes, provider config, and provider client logic.
 - `InputoMacPlatform`: macOS services such as Keychain, clipboard, anchors, hotkeys, and settings.
 - `InputoComposerFeature`: composer UI, settings UI, app state, bridge dispatcher, and WKWebView host.
-- `packages/web-composer`: React + TypeScript source for the bundled composer body.
+- `packages/web-composer`: React + TypeScript source for the bundled Web preview.
 
 Start with [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md), and [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) before changing module boundaries.

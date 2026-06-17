@@ -456,6 +456,7 @@ public extension InputoNativeToolError {
 }
 
 public enum InputoToolEventName: String, Codable, Equatable, Sendable {
+    case commandReceived = "command.received"
     case llmStarted = "llm.started"
     case llmDelta = "llm.delta"
     case llmCompleted = "llm.completed"
@@ -478,6 +479,20 @@ public struct InputoStreamDelta: Codable, Equatable, Sendable {
         self.text = text
         self.sequence = sequence
         self.isFinal = isFinal
+    }
+}
+
+public struct InputoCommandReceivedPayload: Codable, Equatable, Sendable {
+    public var commandName: String
+    public var inputText: String
+    public var bodyText: String
+    public var arguments: [String]
+
+    public init(commandName: String, inputText: String, bodyText: String, arguments: [String] = []) {
+        self.commandName = commandName
+        self.inputText = inputText
+        self.bodyText = bodyText
+        self.arguments = arguments
     }
 }
 

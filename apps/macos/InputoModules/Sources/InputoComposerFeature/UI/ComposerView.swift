@@ -3,6 +3,7 @@ import SwiftUI
 
 public struct ComposerView: View {
     @ObservedObject public var appState: AppState
+    @FocusState private var isCommandFocused: Bool
 
     public init(appState: AppState) {
         self.appState = appState
@@ -19,7 +20,7 @@ public struct ComposerView: View {
                     ProviderSetupBanner(appState: appState, message: providerSetupMessage)
                 }
                 AnchorBarView(appState: appState)
-                composerBody
+                nativeComposer
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .padding(.horizontal, 12)
@@ -29,13 +30,103 @@ public struct ComposerView: View {
         }
     }
 
+    private var nativeComposer: some View {
+        VStack(spacing: 8) {
+            ZStack(alignment: .topLeading) {
+                TextEditor(text: $appState.commandText)
+                    .focused($isCommandFocused)
+                    .font(.system(size: 15))
+                    .scrollContentBackground(.hidden)
+                    .background(.clear)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 6)
+                    .accessibilityLabel("Command input")
+                if appState.commandText.isEmpty {
+                    Text("/polish selected text")
+                        .font(.system(size: 15))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .allowsHitTesting(false)
+                }
+            }
+            .frame(minHeight: 96)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(.quaternary)
+            )
+
+            HStack(spacing: 8) {
+                statusText
+                Spacer(minLength: 8)
+                Button {
+                    appState.commandText = ""
+                    appState.resetSession()
+                    focusCommand()
+                } label: {
+                    Image(systemName: "xmark")
+                }
+                .buttonStyle(.borderless)
+                .controlSize(.small)
+                .help("Clear")
+
+                if appState.isGenerating {
+                    Button {
+                        appState.cancelNativeCommand()
+                    } label: {
+                        Image(systemName: "stop.fill")
+                    }
+                    .buttonStyle(.borderless)
+                    .controlSize(.small)
+                    .help("Cancel")
+                }
+
+                Button {
+                    appState.submitCommandInput()
+                } label: {
+                    Image(systemName: "paperplane.fill")
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .disabled(appState.commandText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || appState.isGenerating)
+                .keyboardShortcut(.return, modifiers: [.command])
+                .help("Run command")
+            }
+        }
+        .onAppear(perform: focusCommand)
+        .onReceive(NotificationCenter.default.publisher(for: .inputoFocusComposer)) { _ in
+            focusCommand()
+        }
+    }
+
     @ViewBuilder
-    private var composerBody: some View {
-        if InputoWebComposerAssets.areBundled {
-            InputoWebComposerView(appState: appState)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+    private var statusText: some View {
+        if let errorMessage = appState.errorMessage {
+            Text(errorMessage)
+                .font(.caption)
+                .foregroundStyle(.red)
+                .lineLimit(1)
+        } else if let statusMessage = appState.statusMessage {
+            Text(statusMessage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        } else if appState.isGenerating {
+            Text("Generating...")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
         } else {
-            MissingWebComposerAssetsView()
+            Text("")
+                .font(.caption)
+                .lineLimit(1)
+        }
+    }
+
+    private func focusCommand() {
+        DispatchQueue.main.async {
+            isCommandFocused = true
         }
     }
 
@@ -139,16 +230,5 @@ private struct AnchorBarView: View {
             .controlSize(.small)
             .help("Refresh app anchors")
         }
-    }
-}
-
-private struct MissingWebComposerAssetsView: View {
-    var body: some View {
-        ContentUnavailableView(
-            "Composer assets missing",
-            systemImage: "exclamationmark.triangle",
-            description: Text("The bundled WebComposer resources were not found.")
-        )
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

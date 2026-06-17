@@ -74,7 +74,10 @@ extension InputoWebComposerView {
         private var bridgeHost: InputoNativeBridgeHost?
         private weak var webView: WKWebView?
         private var activeThemeName: String?
+        private var isDocumentReady = false
+        private var pendingBridgeBase64: [String] = []
         nonisolated(unsafe) private var focusObserver: NSObjectProtocol?
+        nonisolated(unsafe) private var previewObserver: NSObjectProtocol?
 
         init(appState: AppState) {
             self.appState = appState
@@ -97,11 +100,24 @@ extension InputoWebComposerView {
                     self?.focusComposer()
                 }
             }
+            previewObserver = NotificationCenter.default.addObserver(
+                forName: .inputoPreviewBridgeEvent,
+                object: nil,
+                queue: .main
+            ) { [weak self] notification in
+                guard let data = notification.object as? Data else { return }
+                Task { @MainActor in
+                    self?.sendBridgeDataToWeb(data)
+                }
+            }
         }
 
         deinit {
             if let focusObserver {
                 NotificationCenter.default.removeObserver(focusObserver)
+            }
+            if let previewObserver {
+                NotificationCenter.default.removeObserver(previewObserver)
             }
         }
 
@@ -167,6 +183,8 @@ extension InputoWebComposerView {
         public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             configureTransparentBackground(for: webView)
             applyColorScheme(ColorScheme.theme(named: activeThemeName))
+            isDocumentReady = true
+            flushPendingBridgeMessages()
         }
 
         private func isAllowedNavigationURL(_ url: URL?) -> Bool {
@@ -192,7 +210,20 @@ extension InputoWebComposerView {
         }
 
         private func sendBridgeBase64ToWeb(_ base64: String) {
+            guard isDocumentReady else {
+                pendingBridgeBase64.append(base64)
+                return
+            }
             evaluate("window.InputoNativeBridgeReceiveBase64 && window.InputoNativeBridgeReceiveBase64(\"\(base64)\");")
+        }
+
+        private func flushPendingBridgeMessages() {
+            guard !pendingBridgeBase64.isEmpty else { return }
+            let messages = pendingBridgeBase64
+            pendingBridgeBase64.removeAll()
+            for base64 in messages {
+                sendBridgeBase64ToWeb(base64)
+            }
         }
 
         private func evaluate(_ javaScript: String) {

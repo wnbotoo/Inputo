@@ -7,6 +7,7 @@ import SwiftUI
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let appState = AppState.shared
     private var panelController: FloatingPanelController?
+    private var previewWindowController: PreviewWindowController?
     private var statusBarController: StatusBarController?
     private var settingsWindowController: SettingsWindowController?
     private var hideComposerObserver: NSObjectProtocol?
@@ -20,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.hideComposer(reset: false)
         }
         self.panelController = panelController
+        previewWindowController = PreviewWindowController(appState: appState)
         hideComposerObserver = NotificationCenter.default.addObserver(
             forName: .inputoHideComposer,
             object: nil,
@@ -76,6 +78,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func hideComposer(reset: Bool) {
         panelController?.hide()
+        previewWindowController?.hide()
         if reset {
             appState.resetSession()
         }
@@ -91,6 +94,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func activate(anchor: AppAnchor) {
         if appState.activate(anchor: anchor) {
             panelController?.hide()
+            previewWindowController?.hide()
             appState.resetSession()
         } else {
             panelController?.show()

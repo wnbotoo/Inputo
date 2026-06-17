@@ -54,7 +54,7 @@ swift test --package-path apps/macos/InputoModules
 xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build
 ```
 
-Run this before committing Web composer source or bundled Web assets:
+Run this before committing Web preview source or bundled Web assets:
 
 ```bash
 cd packages/web-composer
@@ -105,14 +105,14 @@ For macOS runtime changes, verify:
 
 - the menu bar item opens the composer
 - the configured global shortcut toggles the composer
-- the Web composer is visible and focused
-- typing and paste work in the draft editor
+- the native command input is visible and focused
+- typing and paste work in the native command input
 - Chinese/Japanese/Korean IME composition does not close the panel on Escape
 - Command-Return starts generation
-- streaming preview appears incrementally
+- streaming preview opens the Web preview pop window and updates incrementally
 - Cancel stops the active generation
 - Copy writes only the generated preview after explicit user action
-- Clear resets the composer state
+- Clear resets command, preview, and transient status
 - app anchors refresh and activate apps without showing window titles
 - settings save provider config and API key correctly
 - dark and light appearances render legibly
@@ -120,11 +120,11 @@ For macOS runtime changes, verify:
 
 For milestone closure or larger runtime changes, use the fuller checklist in [docs/MILESTONE_RUNTIME_QA.md](MILESTONE_RUNTIME_QA.md).
 
-The Web composer includes a compact Runtime diagnostics disclosure for local QA. It may show bridge version, bundled-asset state, provider configured/not configured, agent mode, tool count, and permission state labels. It must not show prompts, generated output, API keys, raw provider URLs, local paths, screenshots, or stack traces.
+The Web preview is intentionally small in the current slice. If diagnostics are reintroduced, they may show bridge version, bundled-asset state, provider configured/not configured, agent mode, tool count, and permission state labels. They must not show prompts, generated output, API keys, raw provider URLs, local paths, screenshots, or stack traces.
 
 ## Troubleshooting
 
-Blank Web composer:
+Blank Web preview:
 
 - Run `cd packages/web-composer && pnpm run build`.
 - Confirm `apps/macos/InputoModules/Sources/InputoComposerFeature/Resources/WebComposer/index.html` contains `<script defer src="./composer.js"></script>`.
@@ -160,7 +160,7 @@ When running the macOS app from Xcode, the `WebContent` helper process may print
 | `Unable to hide query parameters from script (missing data)` | WebKit privacy/logging message. The bundled composer uses local relative assets and does not depend on query parameters. |
 | `WebProcess::markAllLayersVolatile: Failed to mark layers as volatile` | WebKit layer memory-management warning. It is not actionable unless paired with rendering glitches or crashes. |
 
-Do not add private Apple entitlements or loosen the sandbox to silence these logs. Investigate only if the Web composer is blank, resources fail to load, provider requests fail, or the app crashes.
+Do not add private Apple entitlements or loosen the sandbox to silence these logs. Investigate only if the Web preview is blank, resources fail to load, provider requests fail, or the app crashes.
 
 ## Privacy Review Checklist
 

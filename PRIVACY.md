@@ -9,7 +9,7 @@ This document describes the intended privacy boundary for the current macOS app.
 - Inputo does not store input history or generated output history.
 - Inputo does not capture screenshots, window titles, target-control contents, or arbitrary app content.
 - Provider API keys are stored through the platform credential store, currently macOS Keychain.
-- The bundled Web composer does not receive API keys and does not make provider requests directly.
+- The bundled Web preview does not receive API keys and does not make provider requests directly.
 - Clipboard writes happen only after an explicit user action.
 - App anchors are app-level jump targets, not document or control-level surveillance.
 
@@ -21,15 +21,17 @@ Do not send secrets, regulated data, or confidential third-party content to a pr
 
 ## Provider Configuration
 
-Inputo stores provider settings locally. API keys are stored in Keychain and are not exposed to the Web composer through snapshots, bridge calls, logs, or settings summaries.
+Inputo stores provider settings locally. API keys are stored in Keychain and are not exposed to the Web preview through snapshots, bridge calls, logs, or settings summaries.
 
 The configured provider receives generation requests. Inputo cannot control the provider's server-side logging, retention, training, or abuse-monitoring behavior.
 
-## Local Web Composer
+## Local Web Preview
 
-The composer body is bundled static HTML, CSS, and JavaScript loaded into `WKWebView` from local app resources. It is not a hosted web application.
+The preview surface is bundled static HTML, CSS, and JavaScript loaded into `WKWebView` from local app resources. It is not a hosted web application.
 
-The Web composer owns UI state and user interaction. Native code owns credentials, provider networking, clipboard writes, app anchors, permissions, file grants, and settings persistence.
+In the current implementation, native owns the command input, built-in command execution, credentials, provider networking, clipboard writes, app anchors, permissions, file grants, and settings persistence. The bundled Web surface owns preview rendering and community command intake for `/command` values that native does not recognize.
+
+The native input/Web preview split does not change the default privacy boundary by itself. Any future browser-side networking, dynamic preview runtime expansion, or project-runner capability must be introduced as an explicit opt-in capability with updated policy, documentation, and security review.
 
 ## Clipboard and App Activation
 

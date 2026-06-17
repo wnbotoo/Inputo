@@ -4,7 +4,7 @@ Inputo is a privacy-conscious macOS menu-bar app for system-wide AI text composi
 
 ![Inputo composer preview](docs/assets/inputo-composer-preview.svg)
 
-Inputo is early-stage software. The current repository focuses on a working macOS app, a bundled Web composer, shared contracts, and a careful native/Web trust boundary.
+Inputo is early-stage software. The current repository focuses on a working macOS app, native `/command` input, a bundled Web preview surface, shared contracts, and a careful native/Web trust boundary.
 
 ## Product Positioning
 
@@ -13,7 +13,8 @@ Inputo is for people who want a fast local composer in front of any app without 
 It is designed around a few principles:
 
 - native code owns OS privileges, credentials, provider networking, clipboard writes, app activation, permissions, and file grants
-- Web code owns the composer body UI and talks to native through a versioned, allowlisted bridge
+- native code owns the input box and built-in commands such as `/polish` and `/translate`
+- Web code owns the preview surface and talks to native through a versioned, allowlisted bridge
 - provider requests use an OpenAI-compatible `/v1/chat/completions` API configured by the user
 - clipboard writes and app activation require explicit user action
 - input and generated output are not stored as history
@@ -22,7 +23,8 @@ It is designed around a few principles:
 
 - macOS SwiftUI/AppKit menu-bar app
 - floating composer with keyboard shortcut support
-- React + TypeScript Web composer bundled into the app
+- native `/command` composer with a hidden-by-default Web preview pop window
+- React + TypeScript Web preview bundled into the app
 - native bridge for allowlisted composer tools
 - shared bridge contracts with Swift/Web drift checks
 - OpenAI-compatible streaming provider requests from native code
@@ -30,7 +32,7 @@ It is designed around a few principles:
 - manual copy flow and app-level jump anchors
 - grant-scoped native file read/write UX for assisted workflows
 - compact safe diagnostics and permission-state display
-- Swift package tests, Web composer tests, generated-asset verification, and GitHub Actions CI
+- Swift package tests, Web preview tests, generated-asset verification, and GitHub Actions CI
 
 ## Privacy Boundary
 
@@ -66,7 +68,7 @@ Prerequisites:
 - macOS with Xcode and SwiftPM on `PATH`
 - Node.js and pnpm 11 when editing `packages/web-composer`
 
-Install Web dependencies only when changing the Web composer:
+Install Web dependencies only when changing the Web preview:
 
 ```bash
 pnpm --dir packages/web-composer install
@@ -79,7 +81,7 @@ swift test --package-path apps/macos/InputoModules
 xcodebuild -project apps/macos/Inputo.xcodeproj -scheme Inputo -configuration Debug -derivedDataPath .build/XcodeDerivedData CODE_SIGNING_ALLOWED=NO build
 ```
 
-Every Web composer change should also pass:
+Every Web preview change should also pass:
 
 ```bash
 pnpm --dir packages/web-composer run verify
@@ -93,7 +95,7 @@ Read [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for setup, QA, generated Web ass
 flowchart TB
   user["User"]
   shell["macOS shell\nSwiftUI + AppKit"]
-  web["Bundled Web composer\nReact + TypeScript"]
+  web["Bundled Web preview\nReact + TypeScript"]
   bridge["Native bridge\nallowlisted tool calls"]
   state["AppState"]
   core["InputoCore\ncontracts + provider client"]
@@ -111,7 +113,7 @@ flowchart TB
   platform --> os
 ```
 
-The Xcode project is intentionally thin. Product behavior lives in the local Swift package at `apps/macos/InputoModules`; the Web composer source lives in `packages/web-composer` and generates checked-in app resources.
+The Xcode project is intentionally thin. Product behavior lives in the local Swift package at `apps/macos/InputoModules`; the Web preview source lives in `packages/web-composer` and generates checked-in app resources.
 
 ## Documentation
 
@@ -121,7 +123,7 @@ The Xcode project is intentionally thin. Product behavior lives in the local Swi
 - [Roadmap](docs/ROADMAP.md): planned milestones, near-term backlog, and definition of done.
 - [Open source readiness](docs/OPEN_SOURCE.md): checklist for public repository launch.
 - [Support](SUPPORT.md): where to ask questions and how to keep reports redacted.
-- [Web composer](docs/WEB_COMPOSER.md): React/Vite development, bundling, deployment, debugging, and WKWebView constraints.
+- [Web preview](docs/WEB_COMPOSER.md): React/Vite development, bundling, deployment, debugging, and WKWebView constraints.
 - [Web UI architecture](docs/WEB_UI_ARCHITECTURE.md): Web UI ownership model, state flow, bridge rules, and future agent boundary.
 - [Native executor contract](docs/NATIVE_EXECUTOR_CONTRACT.md): native bridge envelope, tool policy, events, errors, and implementation locations.
 - [M5 handover prompt](docs/M5_HANDOVER_PROMPT.md): fresh-thread prompt for starting the Web Agent Planner work.
@@ -129,7 +131,7 @@ The Xcode project is intentionally thin. Product behavior lives in the local Swi
 
 ## Roadmap
 
-Near-term work starts Milestone 5: a visible Web Agent Planner with activity timeline and tool proposal state while native remains the policy-enforcing executor. Runtime QA for the M1-M4 foundation should continue in parallel. See [docs/ROADMAP.md](docs/ROADMAP.md).
+The Pre-M5 UI split is implemented: native input, `/command` routing, native built-in commands, and a hidden-by-default Web preview pop window. Next priority is a no-Node customizable preview runtime, then Milestone 5: a visible Web Agent Planner with activity timeline and tool proposal state. Runtime QA should continue in parallel. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## What Inputo Is Not
 
@@ -139,6 +141,7 @@ Inputo is not currently:
 - a keylogger, screen reader, screenshot pipeline, or window-title collector
 - an automatic paste tool
 - a hosted Web app
+- a bundled Node/npm project runner
 - an MCP or connector runtime
 - a file-system automation tool without native user grants
 - a replacement for reviewing your provider's privacy and retention policy

@@ -1,5 +1,7 @@
 export const BRIDGE_VERSION = 1 as const;
 
+export type ThemeName = "light" | "dark";
+
 export type BridgeMessageType =
   | "tool.call"
   | "tool.result"
@@ -295,6 +297,7 @@ export const NATIVE_TOOL_DESCRIPTORS = [
 export type BridgeTool = (typeof NATIVE_TOOL_DESCRIPTORS)[number]["id"];
 
 export const NATIVE_EVENT_NAMES = [
+  "command.received",
   "llm.started",
   "llm.delta",
   "llm.completed",
@@ -544,6 +547,13 @@ export interface LLMFailurePayload {
   message?: string;
   field?: string | null;
   retryable?: boolean;
+}
+
+export interface CommandReceivedPayload {
+  commandName: string;
+  inputText: string;
+  bodyText: string;
+  arguments: string[];
 }
 
 export interface AppAnchorActivateRequest {

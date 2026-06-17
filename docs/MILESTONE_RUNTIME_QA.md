@@ -37,24 +37,24 @@ Latest local verification for the P1/P2 composer and diagnostics slice:
 
 | Area | Check | Expected Result | Result |
 | --- | --- | --- | --- |
-| Bundle | Launch built app without Vite dev server. | Web composer renders from bundled assets. | |
-| Menu bar | Open composer from menu bar item. | Panel appears and draft is focused. | |
+| Bundle | Launch built app without Vite dev server. | Native command input opens; Web preview assets are bundled and available. | |
+| Menu bar | Open composer from menu bar item. | Panel appears and command input is focused. | |
 | Shortcut | Toggle composer with configured shortcut. | Panel opens and closes predictably. | |
-| Focus | Reopen after hiding. | Draft focus returns without stale selection issues. | |
+| Focus | Reopen after hiding. | Command input focus returns without stale selection issues. | |
 | Displays | Open on primary and secondary displays. | Panel placement is predictable and non-crashing. | |
 | Spaces | Use while another app is full-screen. | Behavior is documented and non-crashing. | |
 | Appearance | Test light and dark modes. | Text and controls remain legible. | |
 | Motion | Test with Reduce Motion enabled. | Core loop still works. | |
 | IME | Compose CJK text and press Escape during composition. | Composition is not cancelled by hiding the panel. | |
-| Keyboard | Press Command-Return from editor fields. | Generation starts only when draft and provider setup are valid. | |
+| Keyboard | Press Command-Return from the command input. | Generation starts only when `/command` input and provider setup are valid. | |
 | Provider | Test missing key, invalid model, network failure, and success. | Errors are actionable and display-safe. | |
-| Streaming | Generate with streaming provider. | Preview updates incrementally and completes cleanly. | |
+| Streaming | Run `/polish` or `/translate` with a streaming provider. | Web preview pop window opens, updates incrementally, and completes cleanly. | |
 | Cancel | Cancel active generation. | UI exits generating state and late results are ignored. | |
 | Copy | Click Copy after generation. | Only generated preview is copied after explicit action. | |
-| Clear | Clear during and after generation. | Draft, instruction, preview, and transient status reset. | |
+| Clear | Clear during and after generation. | Command input, preview, and transient status reset. | |
 | Anchors | Refresh and activate anchors. | App switches without exposing window titles or screenshots. | |
 | File grants | In assisted mode, read and write text through native grants. | Web receives grant-scoped results without local paths. | |
-| Runtime diagnostics | Open the Runtime disclosure in the composer. | Only bridge version, asset status, provider configured/not configured, mode, tool count, and permission labels/details appear. | |
+| Unknown command | Run an unrecognized `/command`. | Web preview pop window opens with the forwarded command payload and no provider request is made by native. | |
 | Accessibility | Navigate core loop by keyboard and inspect labels with VoiceOver. | Controls have meaningful names and status is announced politely. | |
 | Logs | Review Xcode/WebKit logs. | Only documented harmless noise appears. | |
 

@@ -5,7 +5,6 @@ import SwiftUI
 
 @MainActor
 final class FloatingPanelController: NSObject, NSWindowDelegate {
-    private let appState: AppState
     private let panel: InputoFloatingPanel
     private var keyDownMonitor: Any?
 
@@ -16,18 +15,15 @@ final class FloatingPanelController: NSObject, NSWindowDelegate {
     }
 
     init(appState: AppState) {
-        self.appState = appState
-
         let contentView = ComposerView(appState: appState)
         let hostingView = NSHostingView(rootView: contentView)
 
         panel = InputoFloatingPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 860, height: 320),
+            contentRect: NSRect(x: 0, y: 0, width: 760, height: 220),
             styleMask: [.titled, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
-        panel.ignoresNativeCancelOperation = InputoWebComposerAssets.areBundled
         panel.contentView = hostingView
         panel.isFloatingPanel = true
         panel.level = .floating
@@ -42,27 +38,20 @@ final class FloatingPanelController: NSObject, NSWindowDelegate {
         panel.hasShadow = true
 
         super.init()
+
         panel.delegate = self
         keyDownMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, self.panel.isKeyWindow, event.keyCode == UInt16(kVK_Escape) else {
                 return event
             }
-            guard !InputoWebComposerAssets.areBundled else {
+            if self.panel.hasMarkedTextInFirstResponder {
+                self.panel.deferCancelOperationForCurrentInputMethodEvent()
                 return event
             }
             self.onEscape?()
             return nil
+        }
     }
-}
-
-private final class InputoFloatingPanel: NSPanel {
-    var ignoresNativeCancelOperation = false
-
-    override func cancelOperation(_ sender: Any?) {
-        guard !ignoresNativeCancelOperation else { return }
-        super.cancelOperation(sender)
-    }
-}
 
     deinit {
         if let keyDownMonitor {
@@ -89,14 +78,124 @@ private final class InputoFloatingPanel: NSPanel {
     private func positionPanel() {
         let screen = NSScreen.main ?? NSScreen.screens.first
         let visibleFrame = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-        let width = min(860, visibleFrame.width - 64)
-        let targetHeight = visibleFrame.height * 0.34
-        let maxHeight = visibleFrame.height * 0.5
-        let height = min(max(280, targetHeight), maxHeight)
+        let width = min(760, visibleFrame.width - 64)
+        let height = min(max(190, visibleFrame.height * 0.22), 260)
         let bottomMargin = max(28, min(56, visibleFrame.height * 0.05))
         let x = visibleFrame.midX - width / 2
         let y = visibleFrame.minY + bottomMargin
         panel.setFrame(NSRect(x: x, y: y, width: width, height: height), display: true)
     }
+}
 
+@MainActor
+final class PreviewWindowController: NSObject, NSWindowDelegate {
+    private let panel: InputoFloatingPanel
+    private var previewObserver: NSObjectProtocol?
+
+    init(appState: AppState) {
+        let contentView = InputoWebComposerView(appState: appState)
+        let hostingView = NSHostingView(rootView: contentView)
+
+        panel = InputoFloatingPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 860, height: 380),
+            styleMask: [.titled, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        panel.contentView = hostingView
+        panel.isFloatingPanel = true
+        panel.level = .floating
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+        panel.titleVisibility = .hidden
+        panel.titlebarAppearsTransparent = true
+        panel.isMovableByWindowBackground = true
+        panel.isReleasedWhenClosed = false
+        panel.hidesOnDeactivate = false
+        panel.backgroundColor = .clear
+        panel.isOpaque = false
+        panel.hasShadow = true
+
+        super.init()
+
+        panel.delegate = self
+        previewObserver = NotificationCenter.default.addObserver(
+            forName: .inputoPreviewBridgeEvent,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.show()
+            }
+        }
+    }
+
+    deinit {
+        if let previewObserver {
+            NotificationCenter.default.removeObserver(previewObserver)
+        }
+    }
+
+    func show() {
+        positionPanel()
+        panel.orderFrontRegardless()
+    }
+
+    func hide() {
+        panel.orderOut(nil)
+    }
+
+    private func positionPanel() {
+        let screen = NSScreen.main ?? NSScreen.screens.first
+        let visibleFrame = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let width = min(860, visibleFrame.width - 64)
+        let height = min(max(320, visibleFrame.height * 0.38), visibleFrame.height * 0.52)
+        let bottomMargin = max(252, min(320, visibleFrame.height * 0.28))
+        let x = visibleFrame.midX - width / 2
+        let y = min(visibleFrame.maxY - height - 32, visibleFrame.minY + bottomMargin)
+        panel.setFrame(NSRect(x: x, y: y, width: width, height: height), display: true)
+    }
+}
+
+private final class InputoFloatingPanel: NSPanel {
+    private var ignoresCurrentInputMethodCancelOperation = false
+
+    override func cancelOperation(_ sender: Any?) {
+        if ignoresCurrentInputMethodCancelOperation {
+            ignoresCurrentInputMethodCancelOperation = false
+            return
+        }
+        guard !hasMarkedTextInFirstResponder else {
+            return
+        }
+        orderOut(nil)
+    }
+
+    func deferCancelOperationForCurrentInputMethodEvent() {
+        ignoresCurrentInputMethodCancelOperation = true
+        DispatchQueue.main.async { [weak self] in
+            self?.ignoresCurrentInputMethodCancelOperation = false
+        }
+    }
+
+    var hasMarkedTextInFirstResponder: Bool {
+        firstResponder.inputoHasMarkedText
+    }
+}
+
+private extension Optional where Wrapped == NSResponder {
+    var inputoHasMarkedText: Bool {
+        guard let responder = self else {
+            return false
+        }
+        if let textInputClient = responder as? NSTextInputClient, textInputClient.hasMarkedText() {
+            return true
+        }
+        guard let view = responder as? NSView else {
+            return false
+        }
+        guard let fieldEditor = view.window?.fieldEditor(false, for: view) as? NSTextInputClient else {
+            return false
+        }
+        return fieldEditor.hasMarkedText()
+    }
 }

@@ -1,6 +1,8 @@
 # M5 Handover Prompt
 
-Use this prompt to start a fresh Codex conversation for Milestone 5.
+Use this prompt to start a fresh Codex conversation for Milestone 5 after Preview Runtime V1 is complete. M5 is still planned, but Preview Runtime V1 remains the immediate next slice.
+
+The Pre-M5 native input/Web preview split is implemented. For the immediate next slice, use [docs/ROADMAP.md](ROADMAP.md): Preview Runtime V1 without a bundled Node runtime.
 
 ```text
 继续开发 Inputo，仓库路径是 /Users/wnbot/Projects/Inputo。
@@ -22,6 +24,14 @@ Use this prompt to start a fresh Codex conversation for Milestone 5.
 
 Start Milestone 5: Web Agent Planner.
 
+Only start this after:
+
+- native owns the main input box and `/command` routing
+- built-in commands such as `/polish` and `/translate` execute from native
+- unknown `/command` input can be forwarded to Web through the bridge
+- the Web preview pop window is hidden by default and opens when bridge data is delivered
+- Preview Runtime V1 can render at least text/markdown/safe HTML without a bundled Node runtime
+
 Goal:
 
 Let Web orchestrate visible multi-step workflows while native remains the policy-enforcing executor.
@@ -40,6 +50,7 @@ Important non-goals for the first M5 slice:
 - Do not enable autonomous background execution.
 - Do not enable network.fetch.
 - Do not add MCP or connector execution.
+- Do not add a bundled Node, Bun, npm install, Vite dev server, or arbitrary project runner.
 - Do not add screenshots, window-title capture, automatic paste, browser-side provider networking, or prompt/output persistence.
 - Do not move credentials, provider requests, clipboard writes, app activation, file grants, OS permission prompts, hotkeys, or settings persistence into Web code.
 

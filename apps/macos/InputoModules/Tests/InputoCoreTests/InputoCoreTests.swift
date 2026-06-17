@@ -94,6 +94,7 @@ func nativeExecutorDefaultToolsMatchSharedBridgeFixture() throws {
     #expect(fixture.version == InputoBridgeContract.version)
     #expect(fixture.tools == InputoNativeToolDescriptor.v1DefaultTools)
     #expect(fixture.events == [
+        .commandReceived,
         .llmStarted,
         .llmDelta,
         .llmCompleted,

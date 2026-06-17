@@ -1,6 +1,6 @@
 # Native Executor Contract
 
-The native executor contract is the boundary between the Web composer and privileged native capabilities. Web can request allowlisted tools. Native validates policy, executes platform work, and returns display-safe results.
+The native executor contract is the boundary between the Web preview/agent surface and privileged native capabilities. Web can request allowlisted tools. Native validates policy, executes platform work, and returns display-safe results.
 
 ## Envelope Format
 
@@ -98,6 +98,7 @@ For tools marked with per-call confirmation, Web may indicate that a call came f
 
 | Event | Meaning |
 | --- | --- |
+| `command.received` | Native received an unrecognized `/command` and forwarded the full user input to Web. |
 | `llm.started` | Native accepted a generation request. |
 | `llm.delta` | Streaming text delta. |
 | `llm.completed` | Generation completed successfully. |
@@ -105,6 +106,14 @@ For tools marked with per-call confirmation, Web may indicate that a call came f
 | `llm.cancelled` | Generation was cancelled. |
 
 Events may include a `requestID`. Web ignores events for a different active request and for requests that are no longer active after cancellation, clear, or completion.
+
+## Command Routing Events
+
+The main input box and `/command` parser live in native. Native handles built-in commands such as `/polish` and `/translate` by running provider requests itself, then streams preview output to Web with existing `llm.*` events.
+
+If native does not recognize a command, it emits `command.received` with the command name, complete input text, body text, and parsed arguments. Native also shows the Web preview pop window when this bridge data is delivered.
+
+Unknown command payloads may include user-authored text. They must not include API keys, provider URLs with credentials, local file paths outside explicit grants, screenshots, window titles, or target-control contents.
 
 ## Snapshot Privacy
 
@@ -123,7 +132,7 @@ File tools are grant-based. Web does not send arbitrary local paths to native. A
 
 This keeps file access user-mediated and lets each platform implement its own permission model.
 
-The current Web composer can request a readable text grant and load the resulting text into the draft, or request a writable text grant and save the generated preview. The bridge result includes safe display metadata such as display name, content type, byte count, and grant ID; local paths remain native-owned.
+Future Web agent flows can request readable or writable file grants when policy allows. The bridge result includes safe display metadata such as display name, content type, byte count, and grant ID; local paths remain native-owned.
 
 ## Drift Checks
 
@@ -153,4 +162,4 @@ Native errors should be redacted before crossing the bridge. Provider URLs, API 
 - Bridge dispatcher: `apps/macos/InputoModules/Sources/InputoComposerFeature/Bridge/InputoNativeBridgeDispatcher.swift`
 - WKWebView host boundary: `apps/macos/InputoModules/Sources/InputoComposerFeature/Bridge/InputoNativeBridgeHost.swift`
 - Web bridge client: `packages/web-composer/src/shared/bridge/bridgeClient.ts`
-- Web composer bridge drift test: `packages/web-composer/src/shared/bridge/contractDrift.test.ts`
+- Web bridge drift test: `packages/web-composer/src/shared/bridge/contractDrift.test.ts`

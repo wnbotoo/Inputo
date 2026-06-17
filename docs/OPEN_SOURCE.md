@@ -42,7 +42,7 @@ This checklist tracks the repository work needed before making Inputo public und
 
 - [ ] Re-run the privacy claims in `README.md` and `PRIVACY.md` against implementation behavior.
 - [ ] Confirm API keys remain in Keychain and are never returned to Web snapshots.
-- [ ] Confirm provider requests originate in native code, not the Web composer.
+- [ ] Confirm provider requests originate in native code, not the Web preview.
 - [ ] Confirm clipboard writes require explicit user action.
 - [ ] Confirm app anchors do not expose window titles or target-control contents.
 - [ ] Confirm generated logs and troubleshooting docs do not ask users to paste secrets or private prompts publicly.

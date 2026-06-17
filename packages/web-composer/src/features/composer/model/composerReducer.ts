@@ -1,4 +1,5 @@
 import type {
+  CommandReceivedPayload,
   ComposerState,
   LLMDeltaPayload,
   LLMFailurePayload,
@@ -34,6 +35,7 @@ export interface ComposerViewState {
   permissions: PermissionSnapshot[];
   tools: NativeToolDescriptor[];
   activeRequestID: string | null;
+  routedCommand: CommandReceivedPayload | null;
 }
 
 export const initialComposerViewState: ComposerViewState = {
@@ -44,7 +46,8 @@ export const initialComposerViewState: ComposerViewState = {
   anchors: [],
   permissions: [],
   tools: [],
-  activeRequestID: null
+  activeRequestID: null,
+  routedCommand: null
 };
 
 export type ComposerAction =
@@ -160,14 +163,31 @@ export function applyNativeEvent(
   state: ComposerViewState,
   event: NativeEvent
 ): ComposerViewState {
-  if (event.requestID && state.activeRequestID !== event.requestID) {
+  if (event.event !== "llm.started" && event.requestID && state.activeRequestID !== event.requestID) {
     return state;
   }
 
   switch (event.event) {
+    case "command.received": {
+      const payload = event.payload as CommandReceivedPayload | undefined;
+      return {
+        ...state,
+        activeRequestID: null,
+        routedCommand: payload ?? null,
+        composer: {
+          ...state.composer,
+          generatedOutput: "",
+          isGenerating: false,
+          statusMessage: payload ? `Received /${payload.commandName}.` : null,
+          errorMessage: null
+        }
+      };
+    }
     case "llm.started":
       return {
         ...state,
+        activeRequestID: event.requestID ?? state.activeRequestID,
+        routedCommand: null,
         composer: {
           ...state.composer,
           generatedOutput: "",

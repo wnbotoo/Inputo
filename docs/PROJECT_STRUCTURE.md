@@ -1,6 +1,6 @@
 # Project Structure
 
-Inputo is organized as a monorepo for the macOS app, the bundled Web composer, shared contracts, and future platform work.
+Inputo is organized as a monorepo for the macOS app, the bundled Web preview, shared contracts, and future platform work.
 
 ```text
 apps/
@@ -28,9 +28,9 @@ tools/
 | `apps/macos/InputoModules` | Local Swift package containing product modules and tests. |
 | `apps/macos/InputoModules/Sources/InputoCore` | Foundation-only models, provider client, recipes, and bridge DTOs. |
 | `apps/macos/InputoModules/Sources/InputoMacPlatform` | macOS platform services and OS adapters. |
-| `apps/macos/InputoModules/Sources/InputoComposerFeature` | Composer feature, settings UI, app state, bridge dispatcher, and WKWebView host. |
+| `apps/macos/InputoModules/Sources/InputoComposerFeature` | Native command composer, settings UI, app state, bridge dispatcher, and WKWebView host. |
 | `apps/macos/InputoModules/Sources/InputoComposerFeature/Resources/WebComposer` | Checked-in production Web assets copied into the app bundle. |
-| `packages/web-composer` | React + TypeScript + Vite source workspace for the Web composer body. |
+| `packages/web-composer` | React + TypeScript + Vite source workspace for the Web preview surface. |
 | `packages/bridge-contracts-ts` | Shared TypeScript bridge DTOs, tool descriptors, event names, and helper types consumed by Web packages. |
 | `apps/windows` | Reserved location for the future WinUI/WebView2 shell. |
 | `contracts` | Language-neutral schemas and JSON fixtures. |
@@ -71,7 +71,7 @@ The macOS build must not depend on `pnpm install`, a Vite dev server, or network
 - Cross-platform DTOs, provider models, and pure logic: `InputoCore`.
 - macOS system APIs: `InputoMacPlatform`.
 - Composer or settings product behavior: `InputoComposerFeature`.
-- Web composer UI: `packages/web-composer/src/app`, `packages/web-composer/src/features`, and `packages/web-composer/src/shared`.
+- Web preview UI: `packages/web-composer/src/app`, `packages/web-composer/src/features`, and `packages/web-composer/src/shared`.
 - Shared TypeScript bridge contracts: `packages/bridge-contracts-ts`.
 - Generated production Web assets: `InputoComposerFeature/Resources/WebComposer`.
 - Cross-platform schemas or examples: `contracts`.

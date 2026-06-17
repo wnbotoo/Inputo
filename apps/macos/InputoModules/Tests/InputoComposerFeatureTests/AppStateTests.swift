@@ -605,7 +605,7 @@ func bridgeDispatcherStreamsLLMEventsAndCoalescedDelta() async throws {
         providerResult: .success("Generated stream output"),
         providerStreamChunks: ["Generated ", "stream ", "output"]
     )
-    var events: [String] = []
+    let events = ThreadSafeStrings()
     let emitter = InputoBridgeEventEmitter { data in
         events.append(String(decoding: data, as: UTF8.self))
     }
@@ -625,9 +625,72 @@ func bridgeDispatcherStreamsLLMEventsAndCoalescedDelta() async throws {
     )
 
     #expect(response.ok == true)
-    #expect(events.contains { $0.contains(#""event":"llm.started""#) })
-    #expect(events.contains { $0.contains(#""event":"llm.delta""#) && $0.contains("Generated stream output") })
-    #expect(events.contains { $0.contains(#""event":"llm.completed""#) })
+    #expect(events.values.contains { $0.contains(#""event":"llm.started""#) })
+    #expect(events.values.contains { $0.contains(#""event":"llm.delta""#) && $0.contains("Generated stream output") })
+    #expect(events.values.contains { $0.contains(#""event":"llm.completed""#) })
+}
+
+@MainActor
+@Test
+func nativeCommandRunsBuiltInRecipeAndPublishesPreviewEvents() async throws {
+    let harness = makeHarness(
+        providerResult: .success("Polished output"),
+        providerStreamChunks: ["Polished ", "output"]
+    )
+    let events = ThreadSafeStrings()
+    let observer = NotificationCenter.default.addObserver(
+        forName: .inputoPreviewBridgeEvent,
+        object: nil,
+        queue: nil
+    ) { notification in
+        if let data = notification.object as? Data {
+            events.append(String(decoding: data, as: UTF8.self))
+        }
+    }
+    defer {
+        NotificationCenter.default.removeObserver(observer)
+    }
+
+    harness.state.commandText = "/polish Draft text"
+    await harness.state.submitCommandInput().value
+
+    let request = try #require(harness.provider.requests.first)
+    #expect(request.text == "Draft text")
+    #expect(request.instruction == "")
+    #expect(request.recipe.id == "polish")
+    #expect(harness.state.outputText == "Polished output")
+    #expect(events.values.contains { $0.contains(#""event":"llm.started""#) })
+    #expect(events.values.contains { $0.contains(#""event":"llm.delta""#) && $0.contains("Polished output") })
+    #expect(events.values.contains { $0.contains(#""event":"llm.completed""#) })
+}
+
+@MainActor
+@Test
+func nativeCommandForwardsUnknownCommandToWebWithoutProviderRequest() async {
+    let harness = makeHarness()
+    let events = ThreadSafeStrings()
+    let observer = NotificationCenter.default.addObserver(
+        forName: .inputoPreviewBridgeEvent,
+        object: nil,
+        queue: nil
+    ) { notification in
+        if let data = notification.object as? Data {
+            events.append(String(decoding: data, as: UTF8.self))
+        }
+    }
+    defer {
+        NotificationCenter.default.removeObserver(observer)
+    }
+
+    harness.state.commandText = "/custom Build a weather widget"
+    await harness.state.submitCommandInput().value
+
+    #expect(harness.provider.requests.isEmpty)
+    #expect(harness.state.inputText == "Build a weather widget")
+    #expect(harness.state.statusMessage == "Sent /custom to Web.")
+    #expect(events.values.contains { $0.contains(#""event":"command.received""#) })
+    #expect(events.values.contains { $0.contains(#""commandName":"custom""#) })
+    #expect(events.values.contains { $0.contains("Build a weather widget") })
 }
 
 @MainActor
@@ -1071,6 +1134,23 @@ private struct AppStateHarness {
     let clipboard: FakeClipboardService
     let anchors: FakeAnchorService
     let provider: FakeTextTransformer
+}
+
+private final class ThreadSafeStrings: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storedValues: [String] = []
+
+    var values: [String] {
+        lock.lock()
+        defer { lock.unlock() }
+        return storedValues
+    }
+
+    func append(_ value: String) {
+        lock.lock()
+        storedValues.append(value)
+        lock.unlock()
+    }
 }
 
 private final class ThreadSafeFlag: @unchecked Sendable {

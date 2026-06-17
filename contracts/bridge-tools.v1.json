@@ -256,6 +256,7 @@
     }
   ],
   "events": [
+    "command.received",
     "llm.started",
     "llm.delta",
     "llm.completed",

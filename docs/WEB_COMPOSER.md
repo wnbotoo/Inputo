@@ -1,6 +1,8 @@
-# Web Composer
+# Web Preview
 
-The Inputo composer body is a bundled Web surface hosted inside the native macOS app. Source code lives in `packages/web-composer`; production assets are generated into the SwiftPM resource bundle and loaded by `WKWebView`.
+The Inputo preview pop window is a bundled Web surface hosted inside the native macOS app. Source code lives in `packages/web-composer`; production assets are generated into the SwiftPM resource bundle and loaded by `WKWebView`.
+
+Native owns input and `/command` routing. Web owns preview rendering and the current placeholder intake for commands native does not recognize.
 
 ## Runtime Shape
 
@@ -23,6 +25,23 @@ flowchart LR
 ```
 
 The app runtime does not use a dev server, remote JavaScript, remote CSS, browser-side provider fetch, or browser storage. Xcode builds consume the checked-in generated assets.
+
+Preview Runtime V1 should preserve that property. The shipped app should not require Node, Bun, npm install, a Vite dev server, or network access just to render previews.
+
+## Planned Preview Runtime
+
+The next Web milestone is not a Node-backed project runner. It is a restricted preview runtime that can render richer output while staying inside the existing bundled Web asset model.
+
+Initial preview payloads should support:
+
+- plain text
+- markdown
+- safe HTML
+- small self-contained HTML/CSS/JavaScript documents
+
+Dynamic preview documents should be isolated from the privileged native bridge, preferably with a sandboxed iframe or a separate restricted WebView. The React shell can receive bridge events, decide what to render, report display-safe preview errors, and keep the dynamic document from calling native tools directly.
+
+Network access should remain disabled by default. If browser-side networking is added later, it should be a separate manifest-governed capability with explicit policy, user-facing documentation, and privacy review.
 
 ## Source Layout
 
@@ -147,15 +166,10 @@ Commit the source and regenerated app assets together.
 
 Web calls native through `window.webkit.messageHandlers.inputoNative.postMessage(...)`. The Web bridge client wraps this in typed `tool.call` envelopes and receives `tool.result` or `event` envelopes through `window.InputoNativeBridgeReceiveBase64`.
 
-Common tools used by the composer:
+Common tools still available to the Web preview:
 
 - `app.snapshot`
 - `app.hideComposer`
-- `composer.setDraft`
-- `composer.setInstruction`
-- `composer.selectRecipe`
-- `composer.clear`
-- `llm.stream`
 - `llm.cancel`
 - `clipboard.copyGeneratedOutput`
 - `settings.open`
@@ -164,21 +178,25 @@ Common tools used by the composer:
 - `files.pickWritable`
 - `files.writeText`
 
-Native events used by the composer:
+Native events used by the preview:
 
+- `command.received`
 - `llm.started`
 - `llm.delta`
 - `llm.completed`
 - `llm.failed`
 - `llm.cancelled`
 
-The native snapshot is authoritative for settings, recipes, permissions, and initial composer state. Web keeps local interaction state for responsiveness, then synchronizes through explicit tools. If a native snapshot removes the selected recipe, Web falls back to the first available recipe instead of keeping a stale preset ID.
-
-Provider setup state is rendered from the native snapshot without exposing credentials. Missing or invalid provider setup disables generation and offers the native Settings flow. File tools are shown from native permission state; they stay unavailable in manual mode and use native grant IDs when available in assisted workflow mode.
-
-The composer also renders a compact runtime inspector. It is a safe local diagnostic surface: bridge version, bundled-asset state, provider configured/not configured, agent mode, tool count, and permission state labels. It does not show prompts, generated output, API keys, provider URLs, local file paths, raw provider responses, or stack traces.
+The native snapshot is authoritative for settings, recipes, permissions, and initial state. Web keeps local preview state for native streaming output and unrecognized command payloads.
 
 Generation events are tied to request IDs. Web ignores late events after cancellation, clear, or a different active request so stale streaming deltas cannot restore old output.
+
+Current bridge responsibilities:
+
+- native built-in commands stream preview deltas or final preview payloads to Web
+- unknown `/command` input is forwarded to Web as `command.received` with the complete input text
+- Web preview reports display-safe runtime errors without exposing stack traces, local paths, credentials, or raw provider internals
+- native controls the preview pop window lifecycle and opens it when preview or command data is delivered
 
 ## Security Constraints
 
@@ -199,6 +217,8 @@ The WKWebView host also uses:
 - a content rule list that blocks `http` and `https` resources
 - no browser-side provider networking
 - no localStorage, sessionStorage, IndexedDB, service worker, WebSocket, or XMLHttpRequest usage in the bundle
+
+Preview Runtime V1 should keep the React shell under these constraints. If dynamic HTML/CSS/JavaScript previews need a less restrictive execution context, isolate that context from `window.webkit`, the typed bridge client, credentials, local file paths, and native tool access.
 
 ## Debugging
 
