@@ -78,8 +78,8 @@ The original next step was Milestone 5, the Web Agent Planner. It remains downst
 
 Priority order:
 
-1. Customizable Web preview runtime v1 without a bundled Node runtime.
-2. Milestone 5 Web Agent Planner on top of the new preview boundary.
+1. Milestone 5 Web Agent Planner on top of the new preview boundary.
+2. Manual runtime QA for the native input, Web preview, and Preview Runtime V1 paths.
 3. Optional Node or Bun sidecar for arbitrary npm projects, deferred until the no-Node runtime is not enough.
 
 ## Pre-M5: Native Input And Web Preview Split
@@ -116,6 +116,8 @@ Non-goals:
 
 ## Preview Runtime V1
 
+Status: implemented. Manual runtime QA is still needed.
+
 Goal: make the Web preview meaningfully customizable without adding a bundled Node runtime.
 
 P0 scope:
@@ -131,6 +133,15 @@ Exit criteria:
 - LLM output can render as richer preview content than a textarea without giving that content direct native privileges
 - bundled app builds still do not require Node, pnpm install, a dev server, or network access
 - Web preview crashes or script errors do not break native input or settings
+
+Implemented shape:
+
+- `PreviewPayload` supports `text`, `markdown`, `html`, and `document` payload kinds with metadata and capability flags
+- `preview.render` can deliver explicit payloads through the bridge
+- unknown Web commands such as `/text`, `/md`, `/markdown`, `/html`, `/preview`, `/web`, `/document`, and `/render <kind>` can render directly in Web
+- markdown and safe HTML render in the React preview shell
+- self-contained HTML/CSS/JavaScript renders in a sandboxed iframe with network APIs disabled and `allowNetwork` forced off
+- native ignores bridge messages from non-main frames so iframe documents cannot call privileged native tools directly
 
 ## Milestone 5: Web Agent Planner
 
@@ -204,9 +215,9 @@ Exit criteria:
 
 Highest priority:
 
-- design Preview Runtime V1 for markdown, safe HTML, and self-contained HTML/CSS/JavaScript without bundling Node
-- start Milestone 5 with visible activity timeline and tool proposal state after the split is stable
+- start Milestone 5 with visible activity timeline and tool proposal state after the split and preview runtime are stable
 - finish manual runtime QA for the native input and Web preview split
+- finish manual runtime QA for text, markdown, safe HTML, and isolated document previews
 - finish manual runtime QA across display, Space, appearance, reduced-motion, IME, and VoiceOver scenarios
 - keep bridge contract fixtures, Swift DTOs, TypeScript DTOs, generated assets, and docs updated together
 - keep docs and CI aligned with the monorepo layout

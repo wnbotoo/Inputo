@@ -257,6 +257,7 @@
   ],
   "events": [
     "command.received",
+    "preview.render",
     "llm.started",
     "llm.delta",
     "llm.completed",

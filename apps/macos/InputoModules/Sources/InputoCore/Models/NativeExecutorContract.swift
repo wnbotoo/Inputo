@@ -457,6 +457,7 @@ public extension InputoNativeToolError {
 
 public enum InputoToolEventName: String, Codable, Equatable, Sendable {
     case commandReceived = "command.received"
+    case previewRender = "preview.render"
     case llmStarted = "llm.started"
     case llmDelta = "llm.delta"
     case llmCompleted = "llm.completed"
@@ -493,6 +494,73 @@ public struct InputoCommandReceivedPayload: Codable, Equatable, Sendable {
         self.inputText = inputText
         self.bodyText = bodyText
         self.arguments = arguments
+    }
+}
+
+public enum InputoPreviewPayloadKind: String, Codable, Equatable, Sendable {
+    case text
+    case markdown
+    case html
+    case document
+}
+
+public struct InputoPreviewPayloadCapabilities: Codable, Equatable, Sendable {
+    public var allowInlineStyles: Bool
+    public var allowScripts: Bool
+    public var allowDataImages: Bool
+    public var allowNetwork: Bool
+
+    public init(
+        allowInlineStyles: Bool,
+        allowScripts: Bool,
+        allowDataImages: Bool,
+        allowNetwork: Bool = false
+    ) {
+        self.allowInlineStyles = allowInlineStyles
+        self.allowScripts = allowScripts
+        self.allowDataImages = allowDataImages
+        self.allowNetwork = allowNetwork
+    }
+}
+
+public struct InputoPreviewPayloadMetadata: Codable, Equatable, Sendable {
+    public var title: String?
+    public var source: String?
+    public var language: String?
+    public var description: String?
+
+    public init(
+        title: String? = nil,
+        source: String? = nil,
+        language: String? = nil,
+        description: String? = nil
+    ) {
+        self.title = title
+        self.source = source
+        self.language = language
+        self.description = description
+    }
+}
+
+public struct InputoPreviewPayload: Codable, Equatable, Sendable {
+    public var kind: InputoPreviewPayloadKind
+    public var content: String
+    public var title: String?
+    public var metadata: InputoPreviewPayloadMetadata?
+    public var capabilities: InputoPreviewPayloadCapabilities
+
+    public init(
+        kind: InputoPreviewPayloadKind,
+        content: String,
+        title: String? = nil,
+        metadata: InputoPreviewPayloadMetadata? = nil,
+        capabilities: InputoPreviewPayloadCapabilities
+    ) {
+        self.kind = kind
+        self.content = content
+        self.title = title
+        self.metadata = metadata
+        self.capabilities = capabilities
     }
 }
 

@@ -131,7 +131,7 @@ The Xcode project is intentionally thin. Product behavior lives in the local Swi
 
 ## Roadmap
 
-The Pre-M5 UI split is implemented: native input, `/command` routing, native built-in commands, and a hidden-by-default Web preview pop window. Next priority is a no-Node customizable preview runtime, then Milestone 5: a visible Web Agent Planner with activity timeline and tool proposal state. Runtime QA should continue in parallel. See [docs/ROADMAP.md](docs/ROADMAP.md).
+The Pre-M5 UI split and Preview Runtime V1 are implemented: native input, `/command` routing, native built-in commands, a hidden-by-default Web preview pop window, and no-Node rendering for text, markdown, safe HTML, and isolated self-contained HTML/CSS/JavaScript previews. Next priority is Milestone 5: a visible Web Agent Planner with activity timeline and tool proposal state. Runtime QA should continue in parallel. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## What Inputo Is Not
 

@@ -95,6 +95,7 @@ func nativeExecutorDefaultToolsMatchSharedBridgeFixture() throws {
     #expect(fixture.tools == InputoNativeToolDescriptor.v1DefaultTools)
     #expect(fixture.events == [
         .commandReceived,
+        .previewRender,
         .llmStarted,
         .llmDelta,
         .llmCompleted,
@@ -107,6 +108,30 @@ func nativeExecutorDefaultToolsMatchSharedBridgeFixture() throws {
         .toolFailed,
         .toolCancelled
     ])
+}
+
+@Test
+func previewPayloadDTOsEncodeDisplaySafeCapabilities() throws {
+    let payload = InputoPreviewPayload(
+        kind: .document,
+        content: "<h1>Hello</h1>",
+        title: "Widget",
+        metadata: InputoPreviewPayloadMetadata(source: "web-command", language: "html"),
+        capabilities: InputoPreviewPayloadCapabilities(
+            allowInlineStyles: true,
+            allowScripts: true,
+            allowDataImages: true
+        )
+    )
+
+    let data = try JSONEncoder().encode(payload)
+    let decoded = try JSONDecoder().decode(InputoPreviewPayload.self, from: data)
+    let json = String(decoding: data, as: UTF8.self)
+
+    #expect(decoded == payload)
+    #expect(decoded.capabilities.allowNetwork == false)
+    #expect(json.contains(#""kind":"document""#))
+    #expect(json.contains(#""allowNetwork":false"#))
 }
 
 @Test

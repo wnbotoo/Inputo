@@ -99,6 +99,7 @@ For tools marked with per-call confirmation, Web may indicate that a call came f
 | Event | Meaning |
 | --- | --- |
 | `command.received` | Native received an unrecognized `/command` and forwarded the full user input to Web. |
+| `preview.render` | Native or a Web-routed command delivered an explicit preview payload for text, markdown, safe HTML, or isolated document rendering. |
 | `llm.started` | Native accepted a generation request. |
 | `llm.delta` | Streaming text delta. |
 | `llm.completed` | Generation completed successfully. |
@@ -112,6 +113,15 @@ Events may include a `requestID`. Web ignores events for a different active requ
 The main input box and `/command` parser live in native. Native handles built-in commands such as `/polish` and `/translate` by running provider requests itself, then streams preview output to Web with existing `llm.*` events.
 
 If native does not recognize a command, it emits `command.received` with the command name, complete input text, body text, and parsed arguments. Native also shows the Web preview pop window when this bridge data is delivered.
+
+Preview Runtime V1 also defines `PreviewPayload`:
+
+- `kind`: `text`, `markdown`, `html`, or `document`
+- `content`: the preview body
+- `title` and `metadata`: optional display-safe labels
+- `capabilities`: rendering flags; V1 always forces `allowNetwork` to false
+
+`document` payloads render inside the Web preview's sandboxed iframe. Native bridge messages from non-main frames are ignored, so dynamic documents cannot call privileged native tools directly.
 
 Unknown command payloads may include user-authored text. They must not include API keys, provider URLs with credentials, local file paths outside explicit grants, screenshots, window titles, or target-control contents.
 

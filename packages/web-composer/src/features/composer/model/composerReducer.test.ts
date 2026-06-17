@@ -97,6 +97,89 @@ describe("composerReducer", () => {
     expect(state.composer.statusMessage).toBe("Received /custom.");
   });
 
+  it("renders Web preview commands when they map to a preview payload", () => {
+    const state = composerReducer(initialComposerViewState, {
+      type: "nativeEvent",
+      event: {
+        version: 1,
+        type: "event",
+        event: "command.received",
+        payload: {
+          commandName: "html",
+          inputText: "/html <h1>Hello</h1>",
+          bodyText: "<h1>Hello</h1>",
+          arguments: ["<h1>Hello</h1>"]
+        }
+      }
+    });
+
+    expect(state.routedCommand?.commandName).toBe("html");
+    expect(state.previewPayload?.kind).toBe("html");
+    expect(state.previewPayload?.capabilities.allowScripts).toBe(false);
+    expect(state.composer.statusMessage).toBe("Rendered /html.");
+  });
+
+  it("stores explicit preview.render payloads", () => {
+    const state = composerReducer(initialComposerViewState, {
+      type: "nativeEvent",
+      event: {
+        version: 1,
+        type: "event",
+        event: "preview.render",
+        payload: {
+          kind: "document",
+          content: "<h1>Widget</h1>",
+          title: "Widget preview",
+          capabilities: {
+            allowInlineStyles: true,
+            allowScripts: true,
+            allowDataImages: true,
+            allowNetwork: true
+          }
+        }
+      }
+    });
+
+    expect(state.previewPayload?.kind).toBe("document");
+    expect(state.previewPayload?.title).toBe("Widget preview");
+    expect(state.previewPayload?.capabilities.allowNetwork).toBe(false);
+    expect(state.composer.statusMessage).toBe("Preview rendered.");
+  });
+
+  it("promotes completed HTML output to an isolated document preview", () => {
+    const started = composerReducer(initialComposerViewState, {
+      type: "nativeEvent",
+      event: {
+        version: 1,
+        type: "event",
+        event: "llm.started",
+        requestID: "native-request"
+      }
+    });
+    const withDelta = composerReducer(started, {
+      type: "nativeEvent",
+      event: {
+        version: 1,
+        type: "event",
+        event: "llm.delta",
+        requestID: "native-request",
+        payload: { text: "<!doctype html><html><body><h1>Hi</h1></body></html>" }
+      }
+    });
+    const completed = composerReducer(withDelta, {
+      type: "nativeEvent",
+      event: {
+        version: 1,
+        type: "event",
+        event: "llm.completed",
+        requestID: "native-request"
+      }
+    });
+
+    expect(completed.previewPayload?.kind).toBe("document");
+    expect(completed.previewPayload?.capabilities.allowScripts).toBe(true);
+  });
+
   it("ignores late stream events after a request is no longer active", () => {
     const started = composerReducer(initialComposerViewState, {
       type: "startGeneration",

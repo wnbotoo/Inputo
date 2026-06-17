@@ -31,7 +31,9 @@ The preview surface is bundled static HTML, CSS, and JavaScript loaded into `WKW
 
 In the current implementation, native owns the command input, built-in command execution, credentials, provider networking, clipboard writes, app anchors, permissions, file grants, and settings persistence. The bundled Web surface owns preview rendering and community command intake for `/command` values that native does not recognize.
 
-The native input/Web preview split does not change the default privacy boundary by itself. Any future browser-side networking, dynamic preview runtime expansion, or project-runner capability must be introduced as an explicit opt-in capability with updated policy, documentation, and security review.
+Preview Runtime V1 can render text, markdown, safe HTML, and small self-contained HTML/CSS/JavaScript documents without Node or browser-side networking. Dynamic documents run in a sandboxed iframe, network APIs are disabled, and native ignores bridge messages from non-main frames.
+
+The native input/Web preview split and Preview Runtime V1 do not change the default privacy boundary by themselves. Any future browser-side networking, runtime expansion beyond the current sandbox, or project-runner capability must be introduced as an explicit opt-in capability with updated policy, documentation, and security review.
 
 ## Clipboard and App Activation
 

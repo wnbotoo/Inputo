@@ -9,10 +9,16 @@ import type {
   NativeSnapshot,
   NativeToolDescriptor,
   PermissionSnapshot,
+  PreviewPayload,
   SettingsSummary,
   TransformRecipe
 } from "@inputo/bridge-contracts";
 import { composerStrings } from "./composerStrings";
+import {
+  normalizePreviewPayload,
+  previewPayloadFromCommand,
+  previewPayloadFromOutput
+} from "./previewRuntime";
 
 export const defaultComposerState: ComposerState = {
   draftText: "",
@@ -36,6 +42,7 @@ export interface ComposerViewState {
   tools: NativeToolDescriptor[];
   activeRequestID: string | null;
   routedCommand: CommandReceivedPayload | null;
+  previewPayload: PreviewPayload | null;
 }
 
 export const initialComposerViewState: ComposerViewState = {
@@ -47,7 +54,8 @@ export const initialComposerViewState: ComposerViewState = {
   permissions: [],
   tools: [],
   activeRequestID: null,
-  routedCommand: null
+  routedCommand: null,
+  previewPayload: null
 };
 
 export type ComposerAction =
@@ -124,6 +132,8 @@ export function composerReducer(
       return {
         ...state,
         activeRequestID: action.requestID,
+        routedCommand: null,
+        previewPayload: null,
         composer: {
           ...state.composer,
           generatedOutput: "",
@@ -170,16 +180,36 @@ export function applyNativeEvent(
   switch (event.event) {
     case "command.received": {
       const payload = event.payload as CommandReceivedPayload | undefined;
+      const previewPayload = payload ? previewPayloadFromCommand(payload) : null;
       return {
         ...state,
         activeRequestID: null,
         routedCommand: payload ?? null,
+        previewPayload,
         composer: {
           ...state.composer,
           generatedOutput: "",
           isGenerating: false,
-          statusMessage: payload ? `Received /${payload.commandName}.` : null,
+          statusMessage: payload
+            ? (previewPayload ? `Rendered /${payload.commandName}.` : `Received /${payload.commandName}.`)
+            : null,
           errorMessage: null
+        }
+      };
+    }
+    case "preview.render": {
+      const payload = normalizePreviewPayload(event.payload);
+      return {
+        ...state,
+        activeRequestID: null,
+        routedCommand: null,
+        previewPayload: payload,
+        composer: {
+          ...state.composer,
+          generatedOutput: payload?.content ?? "",
+          isGenerating: false,
+          statusMessage: payload ? composerStrings.previewRendered : null,
+          errorMessage: payload ? null : composerStrings.previewPayloadInvalid
         }
       };
     }
@@ -188,6 +218,7 @@ export function applyNativeEvent(
         ...state,
         activeRequestID: event.requestID ?? state.activeRequestID,
         routedCommand: null,
+        previewPayload: null,
         composer: {
           ...state.composer,
           generatedOutput: "",
@@ -198,11 +229,13 @@ export function applyNativeEvent(
       };
     case "llm.delta": {
       const payload = event.payload as LLMDeltaPayload | undefined;
+      const generatedOutput = `${state.composer.generatedOutput}${payload?.text ?? ""}`;
       return {
         ...state,
+        previewPayload: previewPayloadFromOutput(generatedOutput, { isFinal: false }),
         composer: {
           ...state.composer,
-          generatedOutput: `${state.composer.generatedOutput}${payload?.text ?? ""}`,
+          generatedOutput,
           isGenerating: true
         }
       };
@@ -211,6 +244,7 @@ export function applyNativeEvent(
       return {
         ...state,
         activeRequestID: null,
+        previewPayload: previewPayloadFromOutput(state.composer.generatedOutput, { isFinal: true }),
         composer: {
           ...state.composer,
           isGenerating: false,
@@ -225,6 +259,7 @@ export function applyNativeEvent(
       return {
         ...state,
         activeRequestID: null,
+        previewPayload: null,
         composer: {
           ...state.composer,
           isGenerating: false,
@@ -237,6 +272,7 @@ export function applyNativeEvent(
       return {
         ...state,
         activeRequestID: null,
+        previewPayload: null,
         composer: {
           ...state.composer,
           isGenerating: false,

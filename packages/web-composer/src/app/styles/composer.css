@@ -221,6 +221,164 @@ textarea::placeholder {
   color: var(--muted);
 }
 
+.preview-runtime-text,
+.preview-runtime-rich,
+.preview-runtime-frame-wrap {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background-color: transparent !important;
+}
+
+.preview-runtime-text,
+.preview-runtime-rich {
+  margin: 0;
+  overflow: auto;
+  color: var(--text);
+}
+
+.preview-runtime-text {
+  padding: 8px 10px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.preview-runtime-rich {
+  padding: 10px 12px;
+  line-height: 1.45;
+}
+
+.preview-runtime-rich :is(h1, h2, h3, h4, h5, h6) {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.preview-runtime-rich h1 {
+  font-size: 18px;
+}
+
+.preview-runtime-rich h2 {
+  font-size: 16px;
+}
+
+.preview-runtime-rich h3,
+.preview-runtime-rich h4,
+.preview-runtime-rich h5,
+.preview-runtime-rich h6 {
+  font-size: 14px;
+}
+
+.preview-runtime-rich :is(p, ul, ol, blockquote, pre, table) {
+  margin: 0 0 9px;
+}
+
+.preview-runtime-rich :is(ul, ol) {
+  padding-left: 20px;
+}
+
+.preview-runtime-rich li + li {
+  margin-top: 3px;
+}
+
+.preview-runtime-rich a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.preview-runtime-rich code {
+  border: 1px solid var(--field-border);
+  border-radius: 5px;
+  padding: 1px 4px;
+  background: var(--field-fill);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.92em;
+}
+
+.preview-runtime-rich pre {
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  padding: 8px;
+  overflow: auto;
+  background: var(--field-fill);
+}
+
+.preview-runtime-rich pre code {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.preview-runtime-rich blockquote {
+  border-left: 3px solid var(--border-strong);
+  padding-left: 10px;
+  color: var(--muted);
+}
+
+.preview-runtime-rich table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.preview-runtime-rich :is(th, td) {
+  border: 1px solid var(--field-border);
+  padding: 5px 7px;
+  text-align: left;
+}
+
+.preview-runtime-rich img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+.preview-runtime-frame-wrap {
+  position: relative;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--field-fill) 60%, transparent);
+}
+
+.preview-runtime-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  background: transparent;
+}
+
+.preview-runtime-badge {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  max-width: min(340px, calc(100% - 16px));
+  padding: 3px 7px;
+  overflow: hidden;
+  border: 1px solid var(--field-border);
+  border-radius: 7px;
+  background: color-mix(in srgb, Canvas 86%, var(--surface) 14%);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.preview-runtime-badge.is-error {
+  color: var(--danger);
+}
+
+:root[data-theme="dark"] .preview-runtime-badge {
+  background: color-mix(in srgb, Canvas 72%, var(--surface) 28%);
+}
+
 .web-command-preview {
   min-width: 0;
   min-height: 0;

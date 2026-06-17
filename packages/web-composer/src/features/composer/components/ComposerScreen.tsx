@@ -1,5 +1,7 @@
 import { useComposerController } from "../hooks/useComposerController";
 import { composerStrings } from "../model/composerStrings";
+import { previewTitle } from "../model/previewRuntime";
+import { PreviewRuntime } from "./PreviewRuntime";
 
 export function ComposerScreen() {
   const {
@@ -12,12 +14,17 @@ export function ComposerScreen() {
     copyOutput
   } = useComposerController();
   const routedCommand = viewState.routedCommand;
+  const previewPayload = viewState.previewPayload;
+  const title = previewTitle(
+    previewPayload,
+    routedCommand ? `/${routedCommand.commandName}` : composerStrings.previewTitle
+  );
 
   return (
     <main className="composer-shell" aria-label="Inputo preview">
       <section className="preview-panel" aria-label="Preview">
         <div className="panel-title-row">
-          <h2>{routedCommand ? `/${routedCommand.commandName}` : composerStrings.previewTitle}</h2>
+          <h2>{title}</h2>
           <button
             type="button"
             className="secondary-button"
@@ -28,18 +35,17 @@ export function ComposerScreen() {
           </button>
         </div>
 
-        {routedCommand ? (
+        {routedCommand && !previewPayload ? (
           <div className="web-command-preview" aria-label="Web command">
             <p>{routedCommand.inputText}</p>
             <span>Waiting for Web command runtime.</span>
           </div>
         ) : (
-          <textarea
-            className={`preview-output${hasOutput ? "" : " is-empty"}`}
-            readOnly
-            spellCheck={false}
-            aria-label="Generated preview"
-            value={previewText}
+          <PreviewRuntime
+            payload={previewPayload}
+            fallbackText={previewText}
+            hasFallbackOutput={hasOutput}
+            isGenerating={isGenerating}
           />
         )}
 

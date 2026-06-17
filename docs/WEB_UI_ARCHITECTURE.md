@@ -94,6 +94,7 @@ The bridge includes native-to-Web command and preview events instead of making W
 
 - native result preview events for built-in command streaming and final output via `llm.*`
 - `command.received` events that carry the full user input text to Web
+- `preview.render` events that carry explicit `PreviewPayload` data for text, markdown, safe HTML, or isolated document rendering
 - preview lifecycle notifications so native can open the pop window when Web has meaningful data
 - display-safe runtime error events from Web back to native when needed
 
@@ -104,6 +105,7 @@ The current Web surface is a preview and command-intake layer, not an autonomous
 Allowed future Web-owned work:
 
 - rendering unknown command flows
+- rendering Preview Runtime V1 payloads in the shell or sandboxed iframe
 - activity timeline UI
 - tool proposal UI
 - confirmation UI
@@ -133,7 +135,7 @@ The Web preview should work in:
 
 The production bundle should avoid assumptions that only work on localhost. In particular, production assets use relative URLs, no remote resources, no service worker, no browser storage, and a classic script tag for the local-file WKWebView runtime.
 
-Preview Runtime V1 should not require a bundled Node, Bun, npm install, Vite dev server, or local project runner. Those capabilities are deferred until a later runtime slice, if the no-Node preview model cannot support the product needs.
+Preview Runtime V1 does not require a bundled Node, Bun, npm install, Vite dev server, or local project runner. Text, markdown, and safe HTML render in the React shell. Self-contained HTML/CSS/JavaScript documents render in a sandboxed iframe with network disabled and no direct native bridge privileges. Node/Bun/project-runner capabilities are deferred until a later runtime slice, if the no-Node preview model cannot support the product needs.
 
 ## UI Design Constraints
 

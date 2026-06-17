@@ -26,22 +26,32 @@ flowchart LR
 
 The app runtime does not use a dev server, remote JavaScript, remote CSS, browser-side provider fetch, or browser storage. Xcode builds consume the checked-in generated assets.
 
-Preview Runtime V1 should preserve that property. The shipped app should not require Node, Bun, npm install, a Vite dev server, or network access just to render previews.
+Preview Runtime V1 preserves that property. The shipped app does not require Node, Bun, npm install, a Vite dev server, or network access just to render previews.
 
-## Planned Preview Runtime
+## Preview Runtime V1
 
-The next Web milestone is not a Node-backed project runner. It is a restricted preview runtime that can render richer output while staying inside the existing bundled Web asset model.
+The Web preview includes a restricted no-Node runtime that can render richer output while staying inside the existing bundled Web asset model.
 
-Initial preview payloads should support:
+Preview payloads support:
 
 - plain text
 - markdown
 - safe HTML
 - small self-contained HTML/CSS/JavaScript documents
 
-Dynamic preview documents should be isolated from the privileged native bridge, preferably with a sandboxed iframe or a separate restricted WebView. The React shell can receive bridge events, decide what to render, report display-safe preview errors, and keep the dynamic document from calling native tools directly.
+Dynamic preview documents render in a sandboxed iframe. The React shell receives bridge events, decides what to render, reports display-safe preview errors, and keeps dynamic documents from calling native tools directly. Native also ignores bridge messages from non-main frames, so iframe content cannot bypass the shell by calling `window.webkit.messageHandlers.inputoNative`.
 
 Network access should remain disabled by default. If browser-side networking is added later, it should be a separate manifest-governed capability with explicit policy, user-facing documentation, and privacy review.
+
+Supported command shortcuts for the current V1 renderer:
+
+- `/text ...`
+- `/md ...` or `/markdown ...`
+- `/html ...`
+- `/preview ...`, `/web ...`, or `/document ...`
+- `/render text|markdown|html|document ...`
+
+The command body can also be a JSON `PreviewPayload` with `kind`, `content`, optional `title`/`metadata`, and `capabilities`. V1 always forces `allowNetwork` to `false`.
 
 ## Source Layout
 
@@ -62,6 +72,7 @@ packages/web-composer/
       composer/
         components/
           ComposerScreen.tsx
+          PreviewRuntime.tsx
         hooks/
           useComposerController.ts
           useComposerController.test.ts
@@ -69,6 +80,8 @@ packages/web-composer/
           composerStrings.ts
           composerReducer.ts
           composerReducer.test.ts
+          previewRuntime.ts
+          previewRuntime.test.ts
     shared/
       bridge/
         bridgeClient.ts
@@ -181,6 +194,7 @@ Common tools still available to the Web preview:
 Native events used by the preview:
 
 - `command.received`
+- `preview.render`
 - `llm.started`
 - `llm.delta`
 - `llm.completed`
@@ -195,6 +209,7 @@ Current bridge responsibilities:
 
 - native built-in commands stream preview deltas or final preview payloads to Web
 - unknown `/command` input is forwarded to Web as `command.received` with the complete input text
+- explicit preview payloads are delivered as `preview.render`
 - Web preview reports display-safe runtime errors without exposing stack traces, local paths, credentials, or raw provider internals
 - native controls the preview pop window lifecycle and opens it when preview or command data is delivered
 
@@ -205,7 +220,7 @@ The generated HTML uses a restrictive Content Security Policy:
 - `default-src 'self'`
 - `connect-src 'none'`
 - `object-src 'none'`
-- `frame-src 'none'`
+- `frame-src 'self' data: blob:`
 - `worker-src 'none'`
 - `font-src 'none'`
 
@@ -214,11 +229,13 @@ The WKWebView host also uses:
 - non-persistent `WKWebsiteDataStore`
 - local file loading from the bundled asset directory only
 - navigation restrictions to the asset directory
+- main-frame-only native bridge message handling
+- sandboxed iframe rendering for self-contained preview documents
 - a content rule list that blocks `http` and `https` resources
 - no browser-side provider networking
 - no localStorage, sessionStorage, IndexedDB, service worker, WebSocket, or XMLHttpRequest usage in the bundle
 
-Preview Runtime V1 should keep the React shell under these constraints. If dynamic HTML/CSS/JavaScript previews need a less restrictive execution context, isolate that context from `window.webkit`, the typed bridge client, credentials, local file paths, and native tool access.
+Preview Runtime V1 keeps the React shell under these constraints. Dynamic HTML/CSS/JavaScript previews run in an iframe with `connect-src 'none'`, no same-origin sandbox permission, no form submission, no nested frames, no remote scripts, and no native bridge access.
 
 ## Debugging
 

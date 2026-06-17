@@ -20,6 +20,8 @@ export const composerStrings = {
   generating: "Generating",
   generatingStatus: "Generating...",
   emptyPreview: "No preview yet.",
+  previewRendered: "Preview rendered.",
+  previewPayloadInvalid: "Preview payload could not be rendered.",
   readyToCopy: "Ready to copy.",
   noOutputReturned: "No output returned.",
   generationFailed: "Generation failed.",

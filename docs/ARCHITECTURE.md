@@ -165,12 +165,12 @@ Web owns:
 
 - preview rendering
 - community-defined command orchestration for commands native does not recognize
-- dynamic preview document rendering within a restricted runtime in a future Preview Runtime slice
+- dynamic preview document rendering within Preview Runtime V1's restricted sandboxed iframe
 - future agent timeline and tool proposal UI
 
 Web must not perform built-in provider requests directly, persist input/output history by default, read arbitrary local files, call privileged native tools without bridge policy, or bypass native confirmation policy.
 
-The shipped app should not bundle Node, Bun, npm install, or a project runner for the Pre-M5 split or Preview Runtime V1. A sidecar runtime for arbitrary npm projects is intentionally deferred until the no-Node preview runtime proves insufficient.
+The shipped app does not bundle Node, Bun, npm install, or a project runner for the Pre-M5 split or Preview Runtime V1. A sidecar runtime for arbitrary npm projects is intentionally deferred until the no-Node preview runtime proves insufficient.
 
 ## Privacy Defaults
 

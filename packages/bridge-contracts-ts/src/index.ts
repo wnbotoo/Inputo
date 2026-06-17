@@ -298,6 +298,7 @@ export type BridgeTool = (typeof NATIVE_TOOL_DESCRIPTORS)[number]["id"];
 
 export const NATIVE_EVENT_NAMES = [
   "command.received",
+  "preview.render",
   "llm.started",
   "llm.delta",
   "llm.completed",
@@ -547,6 +548,30 @@ export interface LLMFailurePayload {
   message?: string;
   field?: string | null;
   retryable?: boolean;
+}
+
+export type PreviewPayloadKind = "text" | "markdown" | "html" | "document";
+
+export interface PreviewPayloadCapabilities {
+  allowInlineStyles: boolean;
+  allowScripts: boolean;
+  allowDataImages: boolean;
+  allowNetwork: false;
+}
+
+export interface PreviewPayloadMetadata {
+  title?: string;
+  source?: "native" | "web-command" | "llm-output" | "developer";
+  language?: string;
+  description?: string;
+}
+
+export interface PreviewPayload {
+  kind: PreviewPayloadKind;
+  content: string;
+  title?: string | null;
+  metadata?: PreviewPayloadMetadata;
+  capabilities: PreviewPayloadCapabilities;
 }
 
 export interface CommandReceivedPayload {

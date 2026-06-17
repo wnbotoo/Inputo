@@ -164,6 +164,14 @@ extension InputoWebComposerView {
             decidePolicyFor navigationAction: WKNavigationAction,
             decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void
         ) {
+            if navigationAction.targetFrame?.isMainFrame == false {
+                guard isAllowedPreviewFrameNavigationURL(navigationAction.request.url) else {
+                    decisionHandler(.cancel)
+                    return
+                }
+                decisionHandler(.allow)
+                return
+            }
             guard isAllowedNavigationURL(navigationAction.request.url) else {
                 decisionHandler(.cancel)
                 return
@@ -195,6 +203,14 @@ extension InputoWebComposerView {
             let allowedDirectory = readAccessURL.standardizedFileURL.path
             let requestedPath = url.standardizedFileURL.path
             return requestedPath == allowedDirectory || requestedPath.hasPrefix(allowedDirectory + "/")
+        }
+
+        private func isAllowedPreviewFrameNavigationURL(_ url: URL?) -> Bool {
+            guard let url else { return true }
+            if url.scheme == "about" || url.scheme == "data" || url.scheme == "blob" {
+                return true
+            }
+            return isAllowedNavigationURL(url)
         }
 
         private func focusComposer() {
@@ -312,6 +328,7 @@ private final class InputoWeakScriptMessageHandler: NSObject, WKScriptMessageHan
     }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard message.frameInfo.isMainFrame else { return }
         let json = message.body as? String
         Task { @MainActor [weak target] in
             target?.receiveBridgeMessage(json)

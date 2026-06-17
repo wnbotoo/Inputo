@@ -6,6 +6,7 @@ import SwiftUI
 @MainActor
 final class FloatingPanelController: NSObject, NSWindowDelegate {
     private let panel: InputoFloatingPanel
+    private let appState: AppState
     private var keyDownMonitor: Any?
 
     var onEscape: (() -> Void)?
@@ -15,11 +16,12 @@ final class FloatingPanelController: NSObject, NSWindowDelegate {
     }
 
     init(appState: AppState) {
+        self.appState = appState
         let contentView = ComposerView(appState: appState)
         let hostingView = NSHostingView(rootView: contentView)
 
         panel = InputoFloatingPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 760, height: 220),
+            contentRect: NSRect(x: 0, y: 0, width: 900, height: 238),
             styleMask: [.titled, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -35,7 +37,7 @@ final class FloatingPanelController: NSObject, NSWindowDelegate {
         panel.hidesOnDeactivate = false
         panel.backgroundColor = .clear
         panel.isOpaque = false
-        panel.hasShadow = true
+        panel.hasShadow = false
 
         super.init()
 
@@ -78,8 +80,9 @@ final class FloatingPanelController: NSObject, NSWindowDelegate {
     private func positionPanel() {
         let screen = NSScreen.main ?? NSScreen.screens.first
         let visibleFrame = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-        let width = min(760, visibleFrame.width - 64)
-        let height = min(max(190, visibleFrame.height * 0.22), 260)
+        let width = min(900, visibleFrame.width - 64)
+        let preferredHeight: CGFloat = appState.providerSetupMessage == nil ? 238 : 302
+        let height = min(preferredHeight, visibleFrame.height - 64)
         let bottomMargin = max(28, min(56, visibleFrame.height * 0.05))
         let x = visibleFrame.midX - width / 2
         let y = visibleFrame.minY + bottomMargin
